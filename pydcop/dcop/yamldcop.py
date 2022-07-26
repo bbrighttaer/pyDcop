@@ -169,6 +169,8 @@ def _build_variables(loaded, dcop) -> Dict[str, Variable]:
     if "variables" in loaded:
         for v_name in loaded["variables"]:
             v = loaded["variables"][v_name]
+            kwargs = {k: v for k, v in v.items() if k not in ["domain", "initial_value",
+                                                              "cost_function", "noise_level"]}
             domain = dcop.domain(v["domain"])
             initial_value = v["initial_value"] if "initial_value" in v else None
             if initial_value and initial_value not in domain.values:
@@ -190,11 +192,11 @@ def _build_variables(loaded, dcop) -> Dict[str, Variable]:
                     )
                 else:
                     variables[v_name] = VariableWithCostFunc(
-                        v_name, domain, cost_func, initial_value
+                        v_name, domain, cost_func, initial_value, **kwargs
                     )
 
             else:
-                variables[v_name] = Variable(v_name, domain, initial_value)
+                variables[v_name] = Variable(v_name, domain, initial_value, **kwargs)
     return variables
 
 
