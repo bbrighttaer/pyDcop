@@ -481,6 +481,7 @@ class NAryFunctionRelation(AbstractBaseRelation, SimpleRepr):
         variables: Iterable[Variable],
         name: str = None,
         f_kwargs=False,
+        differentials: Dict[str, str] = None,
     ) -> None:
         """
         A Relation defined from a python function.
@@ -505,6 +506,11 @@ class NAryFunctionRelation(AbstractBaseRelation, SimpleRepr):
         variables names as keyword arguments. This is useful for function
         that only accept keyword arguments, for the function produced by
         json_serialization.function_from_str.
+
+        :param differentials: a python dictionary object containing the
+        first-order differential equation for each variable involved in this
+        relation. The variable names are the keys and the values are the
+        unparsed equations (string objects, as found in yaml file).
         """
 
         try:
@@ -516,6 +522,7 @@ class NAryFunctionRelation(AbstractBaseRelation, SimpleRepr):
         self._f = f
         self._variables = list(variables)
         self._f_kwargs = f_kwargs
+        self._differentials = differentials
 
         # rel var name => function arg name
         self._var_mapping = {}  # type: Dict[str, str]
@@ -549,6 +556,10 @@ class NAryFunctionRelation(AbstractBaseRelation, SimpleRepr):
     @property
     def function(self):
         return self._f
+
+    @property
+    def differentials(self):
+        return self._differentials
 
     def slice(self, partial_assignment: Dict[str, object]) -> RelationProtocol:
         if not partial_assignment:
@@ -1272,7 +1283,8 @@ def is_compatible(assignment1: Dict[str, Any], assignment2: Dict[str, Any]):
     return True
 
 
-def constraint_from_str(name: str, expression: str, all_variables: Iterable[Variable]):
+def constraint_from_str(name: str, expression: str, all_variables: Iterable[Variable],
+                        differentials: Dict[str, str] = None):
     """
     Generate a relation object from a string expression and a list of
     available variable objects.
@@ -1287,6 +1299,7 @@ def constraint_from_str(name: str, expression: str, all_variables: Iterable[Vari
     could depend on. The exact scope of the relation depends on the content of
     the expression, but any variable used in the expression must be in this
     list.
+    :param differentials: dictionary of first-order differentials w.r.t each variable in the constraint.
 
     :return: a relation object whose function implements the expression
     """
@@ -1304,7 +1317,7 @@ def constraint_from_str(name: str, expression: str, all_variables: Iterable[Vari
                 '"{}"'.format(v, expression)
             )
 
-    return NAryFunctionRelation(f_exp, relation_variables, name, f_kwargs=True)
+    return NAryFunctionRelation(f_exp, relation_variables, name, f_kwargs=True, differentials=differentials)
 
 
 # We keep relation_from_str as an alias for now, but constraint_from_str
@@ -1312,7 +1325,7 @@ def constraint_from_str(name: str, expression: str, all_variables: Iterable[Vari
 relation_from_str = constraint_from_str
 
 def constraint_from_external_definition(name: str,
-        source_file: str, expression: str, all_variables: Iterable[Variable]):
+        source_file: str, expression: str, all_variables: Iterable[Variable], differentials: Dict[str, str] = None):
 
     f_exp = ExpressionFunction(expression, source_file)
     relation_variables = []
@@ -1328,7 +1341,7 @@ def constraint_from_external_definition(name: str,
                 '"{}"'.format(v, expression)
             )
 
-    return NAryFunctionRelation(f_exp, relation_variables, name, f_kwargs=True)
+    return NAryFunctionRelation(f_exp, relation_variables, name, f_kwargs=True, differentials=differentials)
 
 
 def add_var_to_rel(

@@ -9,11 +9,11 @@ from pydcop.dcop.relations import Constraint
 from pydcop.infrastructure.computations import VariableComputation, Message, register
 
 
-GRAPH_TYPE = 'constraints_hypergraph'
+GRAPH_TYPE = "constraints_hypergraph"
 MSG_PRIORITY = 1
-HOLD = 'hold'
-DONE = 'done'
-IDLE = 'idle'
+HOLD = "hold"
+DONE = "done"
+IDLE = "idle"
 
 
 def build_computation(comp_def: ComputationDef):
@@ -31,10 +31,10 @@ def communication_load(*args):
 
 
 class CoCoAMessage(Message):
-    INQUIRY_MESSAGE = 'InquiryMessage'
-    COST_MESSAGE = 'CostMessage'
-    UPDATE_STATE_MESSAGE = 'UpdateStateMessage'
-    START_DCOP_MESSAGE = 'StartDCOP'
+    INQUIRY_MESSAGE = "InquiryMessage"
+    COST_MESSAGE = "CostMessage"
+    UPDATE_STATE_MESSAGE = "UpdateStateMessage"
+    START_DCOP_MESSAGE = "StartDCOP"
 
     def __init__(self, msg_type, content):
         super(CoCoAMessage, self).__init__(msg_type, content)
@@ -48,7 +48,7 @@ class CoCoAMessage(Message):
         else:
             # COST_MESSAGE
             # in the case, `cost_map` and `min_cost_domain_vals` are of the same length hence 2 * ...
-            return 2 * len(self.content['cost_map'])
+            return 2 * len(self.content["cost_map"])
 
     def __str__(self):
         return f"CoCoAMessage({self._msg_type}, {self._content})"
@@ -69,7 +69,7 @@ class CoCoA(VariableComputation):
     """
 
     def __init__(self, comp_def: ComputationDef):
-        assert comp_def.algo.algo == "cocoa"
+        assert "cocoa" in comp_def.algo.algo
 
         super(CoCoA, self).__init__(comp_def.node.variable, comp_def)
 
@@ -88,9 +88,9 @@ class CoCoA(VariableComputation):
 
     def start_dcop(self, neighbor_triggered=False):
         # check if this computation can start
-        if neighbor_triggered or self.computation_def.node.variable.kwargs.get('initiator', False):
+        if neighbor_triggered or self.computation_def.node.variable.kwargs.get("initiator", False):
             msg = CoCoAMessage(CoCoAMessage.INQUIRY_MESSAGE, self.variable.domain.values)
-            self.post_to_all_neighbors(msg, MSG_PRIORITY, on_error='fail')
+            self.post_to_all_neighbors(msg, MSG_PRIORITY, on_error="fail")
 
     @register(CoCoAMessage.INQUIRY_MESSAGE)
     def _on_inquiry_message(self, variable_name: str, recv_msg: CoCoAMessage, t: int):
@@ -126,7 +126,6 @@ class CoCoA(VariableComputation):
         else:
             var1 = variables[1]
             var2 = variables[0]
-        self.logger.debug(f'Constraint: {constraint.expression}, var1: {var1}, var2: {var2}')
 
         # Calculate the costs
         cost_map = np.zeros(constraint.shape)
@@ -145,12 +144,13 @@ class CoCoA(VariableComputation):
 
         # map the min value indices in the cost map to their domain values
         domain_values = list(self.variable.domain.values)
-        min_cost_domain_vals = [domain_values[i] for i in cost_map_min_indices]
+        min_cost_domain_vals = [self.current_value] * len(domain_values) if self.current_value \
+            else [domain_values[i] for i in cost_map_min_indices]
 
-        cost_msg = {'cost_map': cost_map_min, 'min_cost_domain_vals': min_cost_domain_vals}
+        cost_msg = {"cost_map": cost_map_min, "min_cost_domain_vals": min_cost_domain_vals}
 
         # send cost message
-        self.post_msg(variable_name, CoCoAMessage(CoCoAMessage.COST_MESSAGE, cost_msg), MSG_PRIORITY, on_error='fail')
+        self.post_msg(variable_name, CoCoAMessage(CoCoAMessage.COST_MESSAGE, cost_msg), MSG_PRIORITY, on_error="fail")
 
     def _calc_cost(self, constraint, cost_map, d1, i, var1, var2):
         for j, d2 in enumerate(var2.domain.values):
@@ -193,7 +193,7 @@ class CoCoA(VariableComputation):
         t: int
             message timestamp
         """
-        self.logger.debug(f'Received state update from {variable_name}: {recv_msg}')
+        self.logger.debug(f"Received state update from {variable_name}: {recv_msg}")
 
         if recv_msg.content == HOLD:
             self.hold_state_history.append(variable_name)
@@ -228,20 +228,20 @@ class CoCoA(VariableComputation):
         Select a value for this variable.
         CoCoA is not iterative, once we have selected our value the computation finishes.
         """
-        self.logger.debug(f'Attempting value selection for {self.name}')
+        self.logger.debug(f"Attempting value selection for {self.name}")
 
         # select domain indices with minimum cost
-        delta = np.array([c['cost_map'] for c in self.cost_msgs.values()]).sum(axis=0, keepdims=True)
+        delta = np.array([c["cost_map"] for c in self.cost_msgs.values()]).sum(axis=0, keepdims=True)
         rho = np.argmin(delta, axis=1)
 
         # determine if a HOLD state is needed
         if len(rho) > self.beta:
             if self.status == HOLD:
-                self.logger.debug('Incrementing beta to release HOLD state')
+                self.logger.debug("Incrementing beta to release HOLD state")
                 self.beta += 1
                 self.select_value()
             else:
-                self.logger.debug('Going into HOLD state')
+                self.logger.debug("Going into HOLD state")
 
                 # go into HOLD state
                 self.status = HOLD
@@ -258,35 +258,51 @@ class CoCoA(VariableComputation):
             min_index = random.choice(rho)
             var_values = {self.name: list(self.variable.domain.values)[min_index]}
             for agent in self.neighbors:
-                var_values[agent] = self.cost_msgs[agent]['min_cost_domain_vals'][min_index]
+                var_values[agent] = self.cost_msgs[agent]["min_cost_domain_vals"][min_index]
 
             # compute cost
-            cost = 0
-            for constraint in self.computation_def.node.constraints:
-                cost += constraint(**{var: var_values[var] for var in constraint.scope_names})
-            value = var_values[self.name]
+            cost, value = self._calculate_cost(var_values)
             self.value_selection(value, cost)
             self.logger.debug(f"Value selected at {self.name} : value = {value}, cost = {cost}")
 
             # update neighbors
             self.status = DONE
-            self.post_to_all_neighbors(CoCoAMessage(CoCoAMessage.UPDATE_STATE_MESSAGE, self.status), on_error='fail')
+            self.post_to_all_neighbors(CoCoAMessage(CoCoAMessage.UPDATE_STATE_MESSAGE, self.status), on_error="fail")
 
             # select next neighbor to execute
             self.execute_neighbor_comp()
+
+    def _calculate_cost(self, var_values) -> tuple:
+        """
+        Calculate the cost given this variable's value and that of its neighbors.
+
+        Parameters
+        ----------
+        var_values: dict
+            The dictionary of var_name-value pairs.
+
+        Returns
+        -------
+            The cost and value as a tuple
+        """
+        cost = 0
+        for constraint in self.computation_def.node.constraints:
+            cost += constraint(**{var: var_values[var] for var in constraint.scope_names})
+        value = var_values[self.name]
+        return cost, value
 
     def execute_neighbor_comp(self):
         """
         Randomly select a neighbor to trigger execution
         """
-        self.logger.debug('Selecting neighbor to start')
+        self.logger.debug("Selecting neighbor to start")
         available_neighbors = set(self.neighbors) - set(self.done_state_history)
         if available_neighbors:
             selected_neighbor = random.choice(list(available_neighbors))
-            self.logger.debug(f'Neighbor {selected_neighbor} selected to start')
-            self.post_msg(selected_neighbor, CoCoAMessage(CoCoAMessage.START_DCOP_MESSAGE, None), on_error='fail')
+            self.logger.debug(f"Neighbor {selected_neighbor} selected to start")
+            self.post_msg(selected_neighbor, CoCoAMessage(CoCoAMessage.START_DCOP_MESSAGE, None), on_error="fail")
         else:
-            self.logger.debug(f'No neighbor is available to start, done history: {self.done_state_history}')
+            self.logger.debug(f"No neighbor is available to start, done history: {self.done_state_history}")
             self.finished()
             self.stop()
 

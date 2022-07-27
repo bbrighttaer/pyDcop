@@ -233,11 +233,11 @@ def _build_constraints(loaded, dcop, main_dir) -> Dict[str, RelationProtocol]:
                         if pathlib.Path(c["source"]).is_absolute() \
                         else main_dir / c["source"]
                     constraints[c_name] = constraint_from_external_definition(
-                        c_name, src_path, c["function"], dcop.all_variables
+                        c_name, src_path, c["function"], dcop.all_variables, c.get("differentials", None)
                     )
                 else:
                     constraints[c_name] = constraint_from_str(
-                        c_name, c["function"], dcop.all_variables
+                        c_name, c["function"], dcop.all_variables, c.get("differentials", None)
                     )
             elif c["type"] == "extensional":
                 values_def = c["values"]
