@@ -197,7 +197,7 @@ class Variable(SimpleRepr):
     has_cost = False
 
     def __init__(
-        self, name: str, domain: Union[Domain, Iterable[Any]], initial_value=None
+        self, name: str, domain: Union[Domain, Iterable[Any]], initial_value=None, **kwargs
     ) -> None:
         self._name = name
         # If the domain has no name, simply use a named derived from the
@@ -215,6 +215,7 @@ class Variable(SimpleRepr):
                 " {}".format(initial_value, self.domain.values)
             )
         self._initial_value = initial_value
+        self._kwargs = kwargs
 
     @property
     def name(self) -> str:
@@ -227,6 +228,10 @@ class Variable(SimpleRepr):
     @property
     def initial_value(self):
         return self._initial_value
+
+    @property
+    def kwargs(self):
+        return self._kwargs
 
     def cost_for_val(self, val) -> float:
         return 0
@@ -252,7 +257,7 @@ class Variable(SimpleRepr):
         return hash((self._name, self._domain, self._initial_value))
 
     def clone(self):
-        return Variable(self.name, self.domain, initial_value=self.initial_value)
+        return Variable(self.name, self.domain, initial_value=self.initial_value, **self.kwargs)
 
 
 def create_variables(
@@ -470,6 +475,7 @@ class VariableWithCostFunc(Variable):
         domain: Union[VariableDomain, Iterable[Any]],
         cost_func: Union[Callable[..., float], ExpressionFunction],
         initial_value: Any = None,
+        **kwargs
     ) -> None:
         """
         :param name: The name of the variable
@@ -478,7 +484,7 @@ class VariableWithCostFunc(Variable):
         domain.
         :param initial_value: optional, if given must be in the domain
         """
-        super().__init__(name, domain, initial_value)
+        super().__init__(name, domain, initial_value, **kwargs)
         if hasattr(cost_func, "variable_names"):
             # Specific corner case when using an ExpressionFunction as a
             # cost_func: check arguments

@@ -368,7 +368,7 @@ class Directory(object):
         Raises
         ------
         UnknownAgent
-            If there is no knwon agent with this name.
+            If there is no known agent with this name.
 
         """
         try:
