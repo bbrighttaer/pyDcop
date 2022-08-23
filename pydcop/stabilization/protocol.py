@@ -20,6 +20,12 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         self.address = agent.address
         self._dcop_comp = None
 
+        self.parent = None
+        self.children = []
+
+        # added to avoid AttributeError on metric collection
+        self.cycle_count = 0
+
     @property
     def dcop_computation(self):
         return self._dcop_comp
