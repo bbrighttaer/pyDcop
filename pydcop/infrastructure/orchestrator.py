@@ -48,7 +48,8 @@ from pydcop.dcop.scenario import Scenario
 from pydcop.distribution import gh_cgdp
 from pydcop.distribution.objects import Distribution
 from pydcop.infrastructure.agents import Agent, AgentException
-from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT
+from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT, InProcessCommunicationLayer, \
+    HttpCommunicationLayer
 from pydcop.infrastructure.computations import Message, message_type, \
     MessagePassingComputation
 from pydcop.infrastructure.discovery import Directory, UnknownAgent
@@ -121,9 +122,9 @@ class Orchestrator(object):
                  comm: CommunicationLayer,
                  dcop: DCOP,
                  infinity=float('inf'),
-                 collector: Queue=None,
-                 collect_moment: str='value_change',
-                 collect_period: float=None,
+                 collector: Queue = None,
+                 collect_moment: str = 'value_change',
+                 collect_period: float = None,
                  ui_port: int = None):
         self._own_agt = Agent(ORCHESTRATOR, comm, ui_port=ui_port)
         self.directory = Directory(self._own_agt.discovery)
@@ -242,8 +243,8 @@ class Orchestrator(object):
         self.logger.info('Starting replication')
         self._mgt_method('_orchestrator_start_replication', k_target)
 
-    def run(self, scenario: Scenario=None,
-            timeout: Optional[float]=None, repair_only=False):
+    def run(self, scenario: Scenario = None,
+            timeout: Optional[float] = None, repair_only=False):
         """Run the DCOP, with a scenario if given.
 
         When `run()` is called, the orchestrator asks all orchestrated agents to
@@ -268,7 +269,7 @@ class Orchestrator(object):
         self._mgt_method('_orchestrator_run_computations', None)
 
         if timeout is not None:
-            self.logger.info('Setting timer for %s timeour ', timeout)
+            self.logger.info('Setting timer for %s timeout ', timeout)
             self._timeout_timer = threading.Timer(timeout,
                                                   self._on_timeout)
             self._timeout_timer.daemon = True
@@ -379,6 +380,59 @@ class Orchestrator(object):
         self.mgt.ready_to_run.set()
 
 
+class DynamicOrchestrator(Orchestrator):
+
+    def __init__(self, algo: AlgorithmDef, cg: ComputationGraph,
+                 agent_mapping: Distribution,
+                 comm: CommunicationLayer,
+                 dcop: DCOP,
+                 infinity=float('inf'),
+                 collector: Queue = None,
+                 collect_moment: str = 'value_change',
+                 collect_period: float = None,
+                 ui_port: int = None,
+                 stabilization_algorithm: str = None):
+        super(DynamicOrchestrator, self).__init__(
+            algo, cg, agent_mapping, comm, dcop, infinity, collector, collect_moment, collect_period, ui_port
+        )
+
+        # specific properties
+        self.stabilization_algorithm = stabilization_algorithm
+        self.mgt = DynamicAgentsMgt(algo, cg, agent_mapping, dcop,
+                                    self._own_agt, self, infinity, collector=collector,
+                                    collect_moment=collect_moment,
+                                    collect_period=collect_period)
+
+    def start(self):
+        super(DynamicOrchestrator, self).start()
+
+    def start_replication(self, k_target: int):
+        self.logger.warning(f"Replication is not supported by {self.__class__.__name__}")
+
+    def run(self, scenario: Scenario = None, timeout: Optional[float] = None, **kwargs):
+        self.logger.info(f"Running Dynamic Orchestrator")
+
+        if timeout is not None:
+            self.logger.info('Setting timer for %s timeout', timeout)
+            self._timeout_timer = threading.Timer(timeout, self._on_timeout)
+            self._timeout_timer.daemon = True
+            self._timeout_timer.start()
+            self.mgt.ready_to_run = threading.Event()
+        else:
+            self.logger.info('Not timeout, stop with ctrl+c or on algo end ')
+
+        if scenario is not None:
+            self.logger.info('Setting scenario ')
+            self._events_iterator = iter(scenario)
+            self._process_event()
+        else:
+            self.logger.info('No scenario ')
+
+        self.mgt.wait_stop_agents()
+        self._own_agt.clean_shutdown()
+        self._own_agt.join()
+
+
 ################################################################################
 #  Orchestration messages definition
 
@@ -396,7 +450,6 @@ ComputationReplicatedMessage = message_type('replicated',
 PauseMessage = message_type('pause_computations', ['computations'])
 
 ResumeMessage = message_type('resume_computations', ['computations'])
-
 
 # StopAgentMessage is sent by the orchestrator to orchestrated agents to
 # indicate that they must stop.
@@ -437,12 +490,14 @@ AgentRemovedMessage = message_type('agent_removed', [])
 RepairDoneMessage = message_type('repair_done',
                                  ['agent', 'selected_computations', 'metrics'])
 
+
 class RepairRunMessage(Message):
     """
     Sent by the orchestrator to resilient orchestrated agents to start the
     computations for the repair dcop are ready.
 
     """
+
     def __init__(self):
         super().__init__('repair_run', None)
 
@@ -528,6 +583,7 @@ class RepairReadyMessage(Message):
             return False
         return True
 
+
 ################################################################################
 #  Orchestration computation
 
@@ -572,9 +628,9 @@ class AgentsMgt(MessagePassingComputation):
                  dcop: DCOP,
                  orchestrator_agent: Agent, orchestrator: Orchestrator,
                  infinity=float('inf'),
-                 collector: Queue=None,
-                 collect_moment= None,
-                 collect_period: float=None):
+                 collector: Queue = None,
+                 collect_moment=None,
+                 collect_period: float = None):
         super().__init__(ORCHESTRATOR_MGT)
         self._orchestrator_agent = orchestrator_agent
         self._orchestrator = orchestrator
@@ -635,7 +691,7 @@ class AgentsMgt(MessagePassingComputation):
         # used to detect the end of a cycle
         self._computation_cycle = defaultdict(lambda: set())
 
-        self._computation_status = {n.name : '' for n in self.graph.nodes}
+        self._computation_status = {n.name: '' for n in self.graph.nodes}
 
         self.dist_count = 0
 
@@ -780,7 +836,7 @@ class AgentsMgt(MessagePassingComputation):
                                        msg: ComputationReplicatedMessage, _):
 
         if msg.agent in self._agts_state \
-              and self._agts_state[msg.agent] == 'replicating':
+                and self._agts_state[msg.agent] == 'replicating':
             self._agts_state[msg.agent] = 'ready'
             waited = [v for v in self._agts_state
                       if self._agts_state[v] == 'replicating']
@@ -816,7 +872,7 @@ class AgentsMgt(MessagePassingComputation):
                 (msg.value, msg.cost)
 
         else:
-            self._agent_cycle_values[self._current_cycle][msg.computation] =\
+            self._agent_cycle_values[self._current_cycle][msg.computation] = \
                 (msg.value, msg.cost)
             if self._collect_moment == 'value_change':
                 if msg.computation not in self._dcop.variables:
@@ -824,7 +880,7 @@ class AgentsMgt(MessagePassingComputation):
                     # variable)
                     return
 
-                self._agt_cycle_metrics[self._current_cycle][msg.agent] =\
+                self._agt_cycle_metrics[self._current_cycle][msg.agent] = \
                     msg.metrics
                 self._emit_metrics(t)
 
@@ -841,7 +897,7 @@ class AgentsMgt(MessagePassingComputation):
             self.logger.debug('Received cycle change from %s : %s ',
                               msg.agent, msg.cycle)
 
-            cycle_end = msg.cycle-1
+            cycle_end = msg.cycle - 1
 
             if msg.computation in self._computation_cycle[cycle_end]:
                 self.logger.error('Metrics received twice for computation %s '
@@ -858,7 +914,7 @@ class AgentsMgt(MessagePassingComputation):
                         # During a cycle, not all computation select a new
                         # value, we need to get the unchanged values frm the
                         #  previous cycle.
-                        vals = self._agent_cycle_values[cycle_end-1].copy()
+                        vals = self._agent_cycle_values[cycle_end - 1].copy()
                         vals.update(self._agent_cycle_values[cycle_end])
                         self._agent_cycle_values[cycle_end] = vals
                         self.logger.debug('Cycle %s is finished : %s',
@@ -956,10 +1012,10 @@ class AgentsMgt(MessagePassingComputation):
         """
         Handler for internal message `scenario_event` from the orchestrator.
         """
-        self.logger.debug('Scenario event from : %s',  msg)
+        self.logger.debug('Scenario event from : %s', msg)
 
         # Pause the current dcop before injecting the event
-        if not self._orchestrator.repair_only:
+        if hasattr(self._orchestrator, 'repair_only') and not self._orchestrator.repair_only:
             self._request_pause()
 
         evt = msg.content
@@ -1114,7 +1170,7 @@ class AgentsMgt(MessagePassingComputation):
 
                 self._dump_repair_metrics(repair_status, repair_duration)
 
-               # Resume all computation now that everything is ok
+                # Resume all computation now that everything is ok
                 self.logger.info('Repair done on agent %s, all agents done, '
                                  'resuming computations',
                                  msg.agent)
@@ -1123,7 +1179,7 @@ class AgentsMgt(MessagePassingComputation):
                 self.dist_count += 1
                 self.repair_metrics.clear()
 
-    def _dump_repair_metrics(self, repair_status, repair_duration ):
+    def _dump_repair_metrics(self, repair_status, repair_duration):
         # Dump current distribution
         dist = {a: self.discovery.agent_computations(a)
                 for a in self.discovery.agents()}
@@ -1168,7 +1224,7 @@ class AgentsMgt(MessagePassingComputation):
                 agent, PauseMessage(
                     self.discovery.agent_computations(agent)))
 
-    def _request_resume(self, agents= None):
+    def _request_resume(self, agents=None):
         if agents is None:
             agents = self.discovery.agents()
         for agent in agents:
@@ -1245,12 +1301,12 @@ class AgentsMgt(MessagePassingComputation):
         for agt in self._agt_cycle_metrics[self._current_cycle]:
             agt_metrics = self._agt_cycle_metrics[self._current_cycle][agt]
             try:
-                msg_count += sum( agt_metrics['count_ext_msg'][v]
-                                  for v in agt_metrics['count_ext_msg'])
+                msg_count += sum(agt_metrics['count_ext_msg'][v]
+                                 for v in agt_metrics['count_ext_msg'])
                 msg_size += sum(agt_metrics['size_ext_msg'][v]
                                 for v in agt_metrics['size_ext_msg'])
                 agt_cycles += [agt_metrics['cycles'][v]
-                                    for v in agt_metrics['cycles']]
+                               for v in agt_metrics['cycles']]
             except KeyError:
                 self.logger.warning(
                     'Incomplete metrics for computation %s : %s ',
@@ -1262,8 +1318,8 @@ class AgentsMgt(MessagePassingComputation):
         global_metrics = {
             'status': current_status,
             'assignment': assignment,
-            'cost':  cost,
-            'violation':  violation,
+            'cost': cost,
+            'violation': violation,
             'time': total_time,
             'msg_count': msg_count,
             'msg_size': msg_size,
@@ -1279,3 +1335,90 @@ class AgentsMgt(MessagePassingComputation):
 
     def _send_mgt_msg(self, agt, msg):
         self.post_msg('_mgt_' + agt, msg, MSG_MGT)
+
+
+class DynamicAgentsMgt(AgentsMgt):
+
+    def __init__(self, *args, **kwargs):
+        super(DynamicAgentsMgt, self).__init__(*args, **kwargs)
+
+        self._msg_handlers = {
+            # Messages from OrchestratedAgents manager by this Orchestrator:
+            'value_change': self._on_value_change_msg,
+            'cycle_change': self._on_cycle_change_msg,
+            'metrics': self._on_metrics_msg,
+            'end_of_computation': self._on_computation_end_msg,
+            'stopped': self._on_agent_stopped_msg,
+        }
+
+    def _orchestrator_scenario_event(self, msg: Message, _: float):
+        """
+        Handler for dynamic environment events from the dynamic orchestrator.
+        """
+        self.logger.debug('Scenario event from : %s', msg)
+
+        evt = msg.content
+        leaving_agents = []
+        for a in evt.actions:
+            if a.type == 'add_agent':
+                self.logger.info('Event action: Adding agent %s ', a)
+                self._add_agent(a.args['agent'])
+
+            elif a.type == 'remove_agent':
+                self.logger.info('Event action: Remove agent %s ', a)
+                agt = a.args['agent']
+                self._send_mgt_msg(agt, AgentRemovedMessage())
+                leaving_agents.append(agt)
+
+            elif a.type == 'change_constraint':
+                self.logger.info('Event action: Change constraint %s ', a)
+                raise ValueError(f'Unknown event action ' + str(a))
+
+            else:
+                self.logger.error('Unknown event action %s ', a)
+                raise ValueError(f'Unknown event action ' + str(a))
+
+    def _add_agent(self, agent_name):
+        """
+        Dynamically create and start an agent.
+        """
+        if agent_name in self._dcop.agents:
+            self.logger.debug(f'Adding agent {agent_name}')
+
+            # retrieve dynamic orchestrator to facilitate agent creation and deployment
+            orchestrator = self._orchestrator
+            assert isinstance(orchestrator, DynamicOrchestrator), \
+                'Only DynamicOrchestrator can be used with DynamicAgentsMgt'
+
+            # get number of already registered agents
+            num_agents = len(orchestrator.discovery._agents_data)
+
+            ui_port = orchestrator._own_agt._ui_port
+            if ui_port:
+                ui_port += num_agents + 1
+
+            # determine communication channel in use
+            if isinstance(orchestrator._own_agt._comm, InProcessCommunicationLayer):
+                comm = InProcessCommunicationLayer()
+            else:
+                port = orchestrator._own_agt._comm.address[-1] + num_agents + 1
+                comm = HttpCommunicationLayer(('127.0.0.1', port))
+
+            # create dynamic agent
+            from pydcop.infrastructure.orchestratedagents import DynamicOrchestratedAgent
+            agent = DynamicOrchestratedAgent(
+                agt_def=self._dcop.agents[agent_name],
+                comm=comm,
+                orchestrator_address=orchestrator.address,
+                metrics_on=self._collect_moment,
+                metrics_period=self._collect_period,
+                ui_port=ui_port,
+                stabilization_algorithm=orchestrator.stabilization_algorithm
+            )
+
+            # start agent and deploy computations to agent
+            agent.start()
+            self._deploy_computation(agent_name)
+        else:
+            self.logger.error(f'DCOP definition that not have agent {agent_name}')
+            raise ValueError(f'Agent {agent_name} not found in problem definition')

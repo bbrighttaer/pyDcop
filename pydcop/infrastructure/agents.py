@@ -1429,3 +1429,34 @@ class RepairComputation(MessagePassingComputation):
         # self.agent.on_replication_done()
         # dist_msg = ComputationReplicatedMessage(self.name, replica_hosts)
         # self.message_sender.post_send_to_orchestrator(dist_msg)
+
+
+class DynamicAgent(Agent):
+
+    """
+    An agent that supports dynamic construction of an interaction graph.
+    """
+
+    def __init__(self, name: str, comm: CommunicationLayer, agent_def: AgentDef,
+                 ui_port=None, delay: float = None, stabilization_algorithm: str = None):
+        super(DynamicAgent, self).__init__(name, comm, agent_def, ui_port=ui_port, delay=delay)
+
+        if stabilization_algorithm:
+            self.logger.debug(f'Setting up {stabilization_algorithm} stabilization algorithm')
+
+            algo_module = import_module(f'pydcop.stabilization.{stabilization_algorithm}')
+            self.stabilization_comp = algo_module.build_stabilization_computation(
+                self, self.discovery
+            )
+            self.add_computation(self.stabilization_comp, comp_name=f'{self.name}-{stabilization_algorithm}')
+
+    def _on_start(self):
+        self.logger.debug('Dynamic agent _on_start')
+        if not super(DynamicAgent, self)._on_start():
+            return False
+
+        # perform dynamic agent start-up ops here
+        self.logger.info('I am a dynamic agent!')
+
+        return True
+

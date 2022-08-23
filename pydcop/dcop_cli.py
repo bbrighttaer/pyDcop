@@ -48,7 +48,7 @@ from threading import Timer
 import functools
 
 from pydcop.version import __version__
-from pydcop.commands import solve, orchestrator, agent, replica_dist, batch
+from pydcop.commands import solve, orchestrator, agent, replica_dist, batch, ddcop_run
 from pydcop.commands import distribute
 from pydcop.commands import graph
 from pydcop.commands import generate
@@ -98,6 +98,7 @@ def main():
     replica_dist.set_parser(subparsers)
     run.set_parser(subparsers)
     run_fmddcop.set_parser(subparsers)
+    ddcop_run.set_parser(subparsers)
     batch.set_parser(subparsers)
     consolidate.set_parser(subparsers)
 

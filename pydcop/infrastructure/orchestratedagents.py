@@ -31,11 +31,11 @@
 
 import logging
 from time import perf_counter
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Union
 
 from pydcop.algorithms import ComputationDef
 from pydcop.dcop.objects import AgentDef
-from pydcop.infrastructure.agents import ResilientAgent
+from pydcop.infrastructure.agents import ResilientAgent, DynamicAgent
 from pydcop.infrastructure.communication import CommunicationLayer, MSG_VALUE, MSG_MGT
 from pydcop.infrastructure.computations import (
     MessagePassingComputation,
@@ -102,15 +102,15 @@ class OrchestratedAgent(ResilientAgent):
     """
 
     def __init__(
-        self,
-        agt_def: AgentDef,
-        comm: CommunicationLayer,
-        orchestrator_address: Address,
-        metrics_on: str = None,
-        metrics_period: float = None,
-        replication: str = None,
-        ui_port=None,
-        delay: float = None,
+            self,
+            agt_def: AgentDef,
+            comm: CommunicationLayer,
+            orchestrator_address: Address,
+            metrics_on: str = None,
+            metrics_period: float = None,
+            replication: str = None,
+            ui_port=None,
+            delay: float = None,
     ):
         super().__init__(
             agt_def.name, comm, agt_def, replication, ui_port=ui_port, delay=delay
@@ -175,6 +175,76 @@ class OrchestratedAgent(ResilientAgent):
         self._mgt_computation.on_repair_done(selected_computation, metrics)
 
 
+class DynamicOrchestratedAgent(DynamicAgent):
+    """
+    An `OrchestratedDynamicAgent` is an orchestrated agent that supports simulation using stabilization methods.
+    """
+
+    def __init__(
+            self,
+            agt_def: AgentDef,
+            comm: CommunicationLayer,
+            orchestrator_address: Address,
+            metrics_on: str = None,
+            metrics_period: float = None,
+            ui_port=None,
+            delay: float = None,
+            stabilization_algorithm: str = None,
+    ):
+        super(DynamicOrchestratedAgent, self).__init__(
+            agt_def.name, comm, agt_def, ui_port, delay, stabilization_algorithm
+        )
+
+        # Orchestrator and orchestration computation hosted by it:
+        self.discovery.use_directory(ORCHESTRATOR, orchestrator_address)
+        self.discovery.register_agent(ORCHESTRATOR, orchestrator_address, publish=False)
+        self.discovery.register_computation(
+            ORCHESTRATOR_MGT, ORCHESTRATOR, publish=False
+        )
+
+        self._mgt_computation = OrchestrationComputation(self)
+
+        self.metrics_on = metrics_on
+        if metrics_on == "period":
+            self.set_metrics_period(metrics_period)
+
+    def set_metrics_period(self, metrics_period):
+        self.set_periodic_action(metrics_period, self._mgt_computation.send_metrics)
+
+    def _on_start(self):
+        """
+        See Also
+        --------
+        Agent._on_start
+
+        Returns
+        -------
+        status
+
+        """
+        # Called in the agent's thread when it starts
+        if not super()._on_start():
+            return False
+        self.add_computation(self._mgt_computation)
+        self._mgt_computation.start()
+        return True
+
+    def _on_computation_value_changed(self, computation: str, value, cost, cycle):
+        # Overwritten from Agent
+        self._mgt_computation.on_computation_value_changed(
+            computation, value, cost, cycle
+        )
+
+    def _on_computation_new_cycle(self, computation, *args, **kwargs):
+        # Overwritten from Agent
+        self._mgt_computation.on_computation_new_cycle(computation, *args, **kwargs)
+
+    def _on_computation_finished(self, comp_name: str, *args, **kwargs):
+        # Overwritten from ResilientAgent
+        super()._on_computation_finished(comp_name)
+        self._mgt_computation.on_computation_finished(comp_name, *args, **kwargs)
+
+
 class OrchestrationComputation(MessagePassingComputation):
     """
     The OrchestrationComputation is used by OrchestratedAgents to answer to
@@ -186,7 +256,7 @@ class OrchestrationComputation(MessagePassingComputation):
         the OrchestratedAgent this OrchestrationComputation is taking care of.
     """
 
-    def __init__(self, agent: OrchestratedAgent):
+    def __init__(self, agent: Union[OrchestratedAgent, DynamicOrchestratedAgent]):
         super().__init__("_mgt_" + agent.name)
         self.agent = agent
         self.discovery = agent.discovery
