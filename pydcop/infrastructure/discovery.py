@@ -631,7 +631,7 @@ class DiscoveryComputation(MessagePassingComputation):
         # broadcast message to available targets (except sender)
         for comp in self.discovery.computations():
             if comp.startswith(msg.recipient_prefix) and comp != sender:
-                self.post_msg(comp, msg.message)
+                self.post_msg(comp, msg.message, on_error='ignore')
 
     def send_to_directory(self, msg):
         if self.directory_name is not None:
