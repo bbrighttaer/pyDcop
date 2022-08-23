@@ -40,10 +40,8 @@ from pydcop.dcop.objects import AgentDef
 from pydcop.distribution.objects import Distribution
 from pydcop.infrastructure.communication import InProcessCommunicationLayer, \
     HttpCommunicationLayer
-from pydcop.infrastructure.orchestratedagents import OrchestratedAgent
-from pydcop.infrastructure.orchestrator import Orchestrator
-
-
+from pydcop.infrastructure.orchestratedagents import OrchestratedAgent, DynamicOrchestratedAgent
+from pydcop.infrastructure.orchestrator import Orchestrator, DynamicOrchestrator
 
 # FIXME : need better infinity management
 INFINITY = 10000
@@ -52,7 +50,7 @@ INFINITY = 10000
 def solve(dcop: DCOP,
           algo_def: Union[str, AlgorithmDef],
           distribution: Union[str, Distribution],
-          graph: Union[str, ComputationGraph]=None,
+          graph: Union[str, ComputationGraph] = None,
           timeout=5):
     """Solve a dcop in a single process.
 
@@ -111,7 +109,7 @@ def solve(dcop: DCOP,
         graph = graph_module.build_computation_graph(dcop)
 
     elif isinstance(graph, str):
-        graph_module = import_module('pydcop.computations_graph.'+graph)
+        graph_module = import_module('pydcop.computations_graph.' + graph)
         graph = graph_module.build_computation_graph(dcop)
 
     if isinstance(distribution, str):
@@ -147,12 +145,14 @@ def run_local_thread_dcop(algo: AlgorithmDef,
                           distribution: Distribution,
                           dcop: DCOP,
                           infinity,  # FIXME : this has nothing to to here, #41
-                          collector: Queue=None,
-                          collect_moment: str='value_change',
+                          collector: Queue = None,
+                          collect_moment: str = 'value_change',
                           period=None,
                           replication=None,
                           delay=None,
-                          uiport=None) -> Orchestrator:
+                          uiport=None,
+                          use_dynamic_agents: bool = False,
+                          stabilization_algorithm: str = None) -> Orchestrator:
     """Build orchestrator and agents for running a dcop in threads.
 
     The DCOP will be run in a single process, using one thread for each agent.
@@ -170,18 +170,23 @@ def run_local_thread_dcop(algo: AlgorithmDef,
     infinity:
         FIXME : remove this!
     collector: queue
-        optionnal queue, used to collect metrics
+        optional queue, used to collect metrics
     collect_moment: str
         metric collection configuration : 'cycle_change', 'value_change' or
         'period'
     period: float
         period for collecting metrics, only used we 'period' metric collection
     replication
-        replication algorithm,  for resilent DCOP.
+        replication algorithm,  for resilient DCOP.
+    use_dynamic_agents
+        Determines the agent class
+    stabilization_algorithm
+        If `use_dynamic_agents` is set to True, this parameter specifies which dynamic graph stabilization algorithm
+        to use.
 
     Returns
     -------
-    orchestator
+    orchestrator
         An orchestrator agent that bootstrap dcop agents, monitor them and
         collects metrics.
 
@@ -192,30 +197,39 @@ def run_local_thread_dcop(algo: AlgorithmDef,
 
 
     """
-    agents = dcop.agents
     comm = InProcessCommunicationLayer()
-    orchestrator = Orchestrator(algo, cg, distribution, comm, dcop, infinity,
-                                collector=collector,
-                                collect_moment=collect_moment,
-                                collect_period=period,
-                                ui_port=uiport)
-    orchestrator.start()
 
+    if use_dynamic_agents:
+        assert stabilization_algorithm is not None, 'A stabilization algorithm is required to use dynamic agents'
+        orchestrator = DynamicOrchestrator(
+            algo=algo, cg=cg, agent_mapping=distribution, comm=comm, dcop=dcop, infinity=infinity, collector=collector,
+            collect_moment=collect_moment, collect_period=period, ui_port=uiport,
+            stabilization_algorithm=stabilization_algorithm,
+        )
+        orchestrator.start()
+    else:
+        agents = dcop.agents
+        orchestrator = Orchestrator(algo, cg, distribution, comm, dcop, infinity,
+                                    collector=collector,
+                                    collect_moment=collect_moment,
+                                    collect_period=period,
+                                    ui_port=uiport)
+        orchestrator.start()
 
-    # Create and start all agents.
-    # Each agent will register it-self on the orchestrator
-    for a_name in dcop.agents:
-        if uiport:
-            uiport += 1
-        comm = InProcessCommunicationLayer()
-        agent = OrchestratedAgent(agents[a_name], comm,
-                                  orchestrator.address,
-                                  metrics_on=collect_moment,
-                                  metrics_period=period,
-                                  replication=replication,
-                                  delay=delay,
-                                  ui_port=uiport)
-        agent.start()
+        # Create and start all agents.
+        # Each agent will register it-self on the orchestrator
+        for a_name in dcop.agents:
+            if uiport:
+                uiport += 1
+            comm = InProcessCommunicationLayer()
+            agent = OrchestratedAgent(agents[a_name], comm,
+                                      orchestrator.address,
+                                      metrics_on=collect_moment,
+                                      metrics_period=period,
+                                      replication=replication,
+                                      delay=delay,
+                                      ui_port=uiport)
+            agent.start()
 
     # once all agents have started and registered to the orchestrator,
     # computation will be deployed on them and then run.
@@ -225,44 +239,54 @@ def run_local_thread_dcop(algo: AlgorithmDef,
 def run_local_process_dcop(algo: AlgorithmDef, cg: ComputationGraph,
                            distribution: Distribution, dcop: DCOP,
                            infinity,  # FIXME : this has nothing to to here, #41
-                           collector: Queue=None,
-                           collect_moment: str='value_change',
+                           collector: Queue = None,
+                           collect_moment: str = 'value_change',
                            period=None,
                            replication=None,
                            delay=None,
-                           uiport=None
+                           uiport=None,
+                           use_dynamic_agents: bool = False,
+                           stabilization_algorithm: str = None
                            ):
-
-    agents = dcop.agents
     port = 9000
     comm = HttpCommunicationLayer(('127.0.0.1', port))
-    orchestrator = Orchestrator(algo, cg, distribution, comm, dcop, infinity,
-                                collector=collector,
-                                collect_moment=collect_moment,
-                                collect_period=period,
-                                ui_port=uiport)
-    orchestrator.start()
 
-    # Create and start all agents.
-    # Each agent will register it-self on the orchestrator
-    for a_name in dcop.agents:
-        port += 1
-        if uiport:
-            uiport += 1
-        p = Process(target=_build_process_agent, name='p_'+a_name,
-                    args=[agents[a_name], port, orchestrator.address],
-                    kwargs={'metrics_on': collect_moment,
-                            'metrics_period': period,
-                            'replication': replication,
-                            'delay': delay,
-                            'uiport': uiport},
-                    daemon=True)
-        p.start()
+    if use_dynamic_agents:
+        assert stabilization_algorithm is not None, 'A stabilization algorithm is required to use dynamic agents'
+        orchestrator = DynamicOrchestrator(
+            algo=algo, cg=cg, agent_mapping=distribution, comm=comm, dcop=dcop, infinity=infinity, collector=collector,
+            collect_moment=collect_moment, collect_period=period, ui_port=uiport,
+            stabilization_algorithm=stabilization_algorithm,
+        )
+        orchestrator.start()
+    else:
+        agents = dcop.agents
+        orchestrator = Orchestrator(algo, cg, distribution, comm, dcop, infinity,
+                                    collector=collector,
+                                    collect_moment=collect_moment,
+                                    collect_period=period,
+                                    ui_port=uiport)
+        orchestrator.start()
+
+        # Create and start all agents.
+        # Each agent will register it-self on the orchestrator
+        for a_name in dcop.agents:
+            port += 1
+            if uiport:
+                uiport += 1
+            p = Process(target=_build_process_agent, name='p_' + a_name,
+                        args=[agents[a_name], port, orchestrator.address],
+                        kwargs={'metrics_on': collect_moment,
+                                'metrics_period': period,
+                                'replication': replication,
+                                'delay': delay,
+                                'uiport': uiport},
+                        daemon=True)
+            p.start()
 
     # once all agents have started and registered to the orchestrator,
     # computation will be deployed on them and then run.
     return orchestrator
-
 
 
 def _build_process_agent(agt_def: AgentDef, port, orchestrator_address,
