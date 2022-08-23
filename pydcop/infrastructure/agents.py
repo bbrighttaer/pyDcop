@@ -172,6 +172,10 @@ class Agent(object):
         """
         return self._comm
 
+    @property
+    def ui_port(self) -> int:
+        return self._ui_port
+
     def add_computation(self, computation: MessagePassingComputation,
                         comp_name=None, publish=True):
         """
@@ -207,6 +211,10 @@ class Agent(object):
                 computation.computation_def is not None:
             for n in computation.computation_def.node.neighbors:
                 self.discovery.subscribe_computation(n)
+
+            # if using DynamicAgent, pass this computation to the stabilization algorithm
+            if hasattr(self, 'stabilization_comp'):
+                self.stabilization_comp.dcop_computation = computation
 
         if hasattr(computation, '_on_value_selection'):
             computation._on_value_selection = notify_wrap(
@@ -1448,7 +1456,6 @@ class DynamicAgent(Agent):
             self.stabilization_comp = algo_module.build_stabilization_computation(
                 self, self.discovery
             )
-            self.add_computation(self.stabilization_comp, comp_name=f'{self.name}-{stabilization_algorithm}')
 
     def _on_start(self):
         self.logger.debug('Dynamic agent _on_start')
@@ -1457,6 +1464,10 @@ class DynamicAgent(Agent):
 
         # perform dynamic agent start-up ops here
         self.logger.info('I am a dynamic agent!')
+
+        # add, register, and start stabilization computation
+        self.add_computation(self.stabilization_comp)
+        self.stabilization_comp.start()
 
         return True
 

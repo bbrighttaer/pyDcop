@@ -155,6 +155,10 @@ class Orchestrator(object):
     def address(self):
         return self._own_agt.address
 
+    @property
+    def agent(self):
+        return self._own_agt
+
     def set_error_handler(self, callback: Callable):
         """
         Set a callback that will be called if the orchestrator thread stops
@@ -1391,17 +1395,17 @@ class DynamicAgentsMgt(AgentsMgt):
                 'Only DynamicOrchestrator can be used with DynamicAgentsMgt'
 
             # get number of already registered agents
-            num_agents = len(orchestrator.discovery._agents_data)
+            num_agents = len(orchestrator.discovery.agents())
 
-            ui_port = orchestrator._own_agt._ui_port
+            ui_port = orchestrator.agent.ui_port
             if ui_port:
                 ui_port += num_agents + 1
 
             # determine communication channel in use
-            if isinstance(orchestrator._own_agt._comm, InProcessCommunicationLayer):
+            if isinstance(orchestrator.agent.communication, InProcessCommunicationLayer):
                 comm = InProcessCommunicationLayer()
             else:
-                port = orchestrator._own_agt._comm.address[-1] + num_agents + 1
+                port = orchestrator.agent.communication.address[-1] + num_agents + 1
                 comm = HttpCommunicationLayer(('127.0.0.1', port))
 
             # create dynamic agent

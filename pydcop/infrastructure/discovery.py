@@ -117,6 +117,10 @@ PublishReplicaMessage = message_type(
 SubscribeReplicaMessage = message_type(
     'subscribe_replica', ['replica', 'subscribe'])  # ComputationName, bool
 
+BroadcastMessage = message_type(
+    'broadcast_message', ['message', 'recipient_prefix']
+)
+
 
 class DirectoryComputation(MessagePassingComputation):
     """
@@ -576,6 +580,7 @@ class DiscoveryComputation(MessagePassingComputation):
             'publish_computation': self._on_computation_added,
             'unpublish_computation': self._on_computation_removed,
             'publish_replica': self._on_replica_publish,
+            'broadcast_message': self._on_broadcast_message,
         }
 
     @property
@@ -619,6 +624,14 @@ class DiscoveryComputation(MessagePassingComputation):
         else:
             self.discovery.unregister_replica(msg.replica, msg.agent,
                                               publish=False)
+
+    def _on_broadcast_message(self, sender, msg: BroadcastMessage):
+        self.logger.debug(f'Received {str(msg)} from {sender} to publish')
+
+        # broadcast message to available targets (except sender)
+        for comp in self.discovery.computations():
+            if comp.startswith(msg.recipient_prefix) and comp != sender:
+                self.post_msg(comp, msg.message)
 
     def send_to_directory(self, msg):
         if self.directory_name is not None:
