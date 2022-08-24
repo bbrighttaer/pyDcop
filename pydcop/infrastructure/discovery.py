@@ -118,7 +118,7 @@ SubscribeReplicaMessage = message_type(
     'subscribe_replica', ['replica', 'subscribe'])  # ComputationName, bool
 
 BroadcastMessage = message_type(
-    'broadcast_message', ['message', 'recipient_prefix']
+    'broadcast_message', ['message', 'originator', 'recipient_prefix']
 )
 
 
@@ -624,11 +624,9 @@ class DiscoveryComputation(MessagePassingComputation):
                                               publish=False)
 
     def _on_broadcast_message(self, sender, msg: BroadcastMessage):
-        self.logger.debug(f'Received {str(msg)} from {sender} to publish')
-
         # broadcast message to available targets (except sender)
         for comp in self.discovery.computations():
-            if comp.startswith(msg.recipient_prefix) and comp != sender:
+            if comp.startswith(msg.recipient_prefix) and comp != msg.originator:
                 self.post_msg(comp, msg.message, on_error='ignore')
 
     def send_to_directory(self, msg):
