@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.computations import MessagePassingComputation
@@ -18,7 +19,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         self.discovery = discovery
         self.agent = agent
         self.address = agent.address
-        self._dcop_comp = None
+        self._dcop_comps = []
 
         self.parent = None
         self.children = []
@@ -27,11 +28,11 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         self.cycle_count = 0
 
     @property
-    def dcop_computation(self):
-        return self._dcop_comp
+    def dcop_computations(self) -> List[MessagePassingComputation]:
+        return self._dcop_comps
 
-    @dcop_computation.setter
-    def dcop_computation(self, comp):
+    @dcop_computations.setter
+    def dcop_computations(self, comp):
         self.logger.debug(f'Setting DCOP computation: {str(comp)}')
-        self._dcop_comp = comp
+        self._dcop_comps = comp
 
