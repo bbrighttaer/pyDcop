@@ -1,4 +1,3 @@
-import contextlib
 import enum
 import random
 import threading
@@ -11,7 +10,7 @@ from pydcop.infrastructure.communication import ComputationMessage, MSG_ALGO
 from pydcop.infrastructure.computations import MessagePassingComputation, Message, message_type
 from pydcop.infrastructure.discovery import Discovery, BroadcastMessage
 from pydcop.infrastructure.orchestrator import ORCHESTRATOR
-from pydcop.stabilization.protocol import DynamicGraphConstructionComputation
+from pydcop.stabilization.base import DynamicGraphConstructionComputation, Neighbor
 
 NAME = 'DIGCA'
 
@@ -35,12 +34,12 @@ AnnounceResponse = message_type(
 
 AddMe = message_type(
     'add_me',
-    fields=['agent_id', 'address'],
+    fields=['agent_id', 'address', 'comps'],
 )
 
 ChildAdded = message_type(
     'child_added',
-    fields=['agent_id', 'address'],
+    fields=['agent_id', 'address', 'comps'],
 )
 
 AlreadyActive = message_type(
@@ -62,10 +61,6 @@ PingResponse = message_type(
     'ping_response',
     fields=['agent_id', 'address'],
 )
-
-# neighbor types
-Parent = namedtuple('Parent', field_names=['agent_id', 'address'])
-Child = namedtuple('Child', field_names=['agent_id', 'address'])
 
 
 def build_stabilization_computation(agent: DynamicAgent, discovery: Discovery) -> MessagePassingComputation:
@@ -157,7 +152,7 @@ class DIGCA(DynamicGraphConstructionComputation):
             time.sleep(self.announce_response_listening_time)
 
             # select an agent from the list of respondents (if any)
-            self.logger.debug(f'Selecting from announce response list: {self.announce_response_list}')
+            # self.logger.debug(f'Selecting from announce response list: {self.announce_response_list}')
             if self.announce_response_list:
                 selected_agent = random.choice(self.announce_response_list)
 
@@ -165,7 +160,11 @@ class DIGCA(DynamicGraphConstructionComputation):
                 full_msg = ComputationMessage(
                     src_comp=self.name,
                     dest_comp=f'{NAME}-{selected_agent.agent_id}',
-                    msg=AddMe(agent_id=self.agent.name, address=self.address),
+                    msg=AddMe(
+                        agent_id=self.agent.name,
+                        address=self.address,
+                        comps=[c.name for c in self.computations]
+                    ),
                     msg_type=MSG_ALGO,
                 )
 
@@ -208,14 +207,21 @@ class DIGCA(DynamicGraphConstructionComputation):
     def _receive_add_me(self, sender: str, msg: AddMe):
         if self.state == State.INACTIVE:
             # add agent to registers
-            self.children.append(Child(agent_id=msg.agent_id, address=msg.address))
-            self.discovery.register_agent(msg.agent_id, msg.address, publish=False)
+            neighbor = Neighbor(agent_id=msg.agent_id, address=msg.address, computations=msg.comps)
+            self.children.append(neighbor)
+
+            # registration and configuration
+            self.register_neighbor(neighbor)
 
             # construct child-added msg
             full_msg = ComputationMessage(
                 src_comp=self.name,
                 dest_comp=f'{NAME}-{msg.agent_id}',
-                msg=ChildAdded(agent_id=self.agent.name, address=self.address),
+                msg=ChildAdded(
+                    agent_id=self.agent.name,
+                    address=self.address,
+                    comps=[c.name for c in self.computations]
+                ),
                 msg_type=MSG_ALGO,
             )
 
@@ -245,8 +251,10 @@ class DIGCA(DynamicGraphConstructionComputation):
     def _receive_child_added(self, sender: str, msg: ChildAdded):
         if self.state == State.ACTIVE and not self.parent:
             # assign parent
-            self.parent = Parent(agent_id=msg.agent_id, address=msg.address)
-            self.discovery.register_agent(msg.agent_id, msg.address, publish=False)
+            self.parent = Neighbor(agent_id=msg.agent_id, address=msg.address, computations=msg.comps)
+
+            # registration and configuration
+            self.register_neighbor(self.parent)
 
             # construct parent-assigned msg
             full_msg = ComputationMessage(
@@ -263,7 +271,8 @@ class DIGCA(DynamicGraphConstructionComputation):
                 msg=full_msg,
             )
 
-            # dcop execution if order is bottom-up
+            # execute computation if order is bottom-up
+            self._execute_computations('bottom-up')
 
             # report connection to graph UI
 
@@ -275,7 +284,8 @@ class DIGCA(DynamicGraphConstructionComputation):
     def _receive_parent_assigned(self, sender: str, msg: ParentAssigned):
         self.logger.info(f'Assigned as parent of {msg.agent_id}')
 
-        # dcop execution if order is top-down
+        # execute computation (if topdown/async)
+        self._execute_computations('top-down')
 
     def _receive_ping(self, sender: str, msg: Ping):
         ...
@@ -289,3 +299,6 @@ class DIGCA(DynamicGraphConstructionComputation):
     def on_stop(self):
         for cancel in self._periodic_calls_cancel_list:
             cancel()
+
+
+

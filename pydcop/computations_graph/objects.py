@@ -108,9 +108,17 @@ class ComputationNode(SimpleRepr):
     def neighbors(self) -> Iterable[str]:
         return self._neighbors
 
+    @neighbors.setter
+    def neighbors(self, value):
+        self._neighbors = value
+
     @property
     def links(self) ->Iterable['Link']:
         return self._links
+
+    @links.setter
+    def links(self, links):
+        self._links = links
 
     def __eq__(self, other):
         return self.name == other.name and self.type == other.type

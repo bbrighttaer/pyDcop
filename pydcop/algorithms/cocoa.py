@@ -88,7 +88,9 @@ class CoCoA(VariableComputation):
 
     def start_dcop(self, neighbor_triggered=False):
         # check if this computation can start
-        if neighbor_triggered or self.computation_def.node.variable.kwargs.get("initiator", False):
+        if neighbor_triggered \
+                or self.computation_def.node.variable.kwargs.get("initiator", False)\
+                or self.computation_def.exec_mode == 'dynamic':
             msg = CoCoAMessage(CoCoAMessage.INQUIRY_MESSAGE, self.variable.domain.values)
             self.post_to_all_neighbors(msg, MSG_PRIORITY, on_error="fail")
 
@@ -302,9 +304,10 @@ class CoCoA(VariableComputation):
             self.logger.debug(f"Neighbor {selected_neighbor} selected to start")
             self.post_msg(selected_neighbor, CoCoAMessage(CoCoAMessage.START_DCOP_MESSAGE, None), on_error="fail")
         else:
-            self.logger.debug(f"No neighbor is available to start, done history: {self.done_state_history}")
-            self.finished()
-            self.stop()
+            if self.computation_def.exec_mode != 'dynamic':
+                self.logger.debug(f"No neighbor is available to start, done history: {self.done_state_history}")
+                self.finished()
+                self.stop()
 
 
 

@@ -214,7 +214,7 @@ class Agent(object):
 
             # if using DynamicAgent, pass this computation to the stabilization algorithm
             if hasattr(self, 'stabilization_comp'):
-                self.stabilization_comp.dcop_computations.append(computation)
+                self.stabilization_comp.add_computation(computation)
 
         if hasattr(computation, '_on_value_selection'):
             computation._on_value_selection = notify_wrap(
@@ -1467,7 +1467,7 @@ class DynamicAgent(Agent):
 
         # add, register, and start stabilization computation
         self.add_computation(self.stabilization_comp)
-        self.stabilization_comp.start()
+        self.run([self.stabilization_comp.name])
 
         return True
 

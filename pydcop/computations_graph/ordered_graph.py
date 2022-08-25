@@ -35,6 +35,8 @@ from pydcop.dcop.objects import Variable
 from pydcop.dcop.relations import Constraint, find_dependent_relations
 from pydcop.utils.simple_repr import from_repr, simple_repr
 
+GRAPH_NODE_TYPE = "VariableComputationNode"
+
 
 class VariableComputationNode(ComputationNode):
     def __init__(
@@ -47,7 +49,7 @@ class VariableComputationNode(ComputationNode):
             links.append(
                 ConstraintLink(name=c.name, nodes=[v.name for v in c.dimensions])
             )
-        super().__init__(name, "VariableComputationNode", links=links)
+        super().__init__(name, GRAPH_NODE_TYPE, links=links)
         self._variable = variable
         self._constraints = constraints
 
