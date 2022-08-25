@@ -47,6 +47,8 @@ from pydcop.dcop.dcop import DCOP
 from pydcop.dcop.relations import RelationProtocol, Constraint
 from pydcop.utils.simple_repr import from_repr, simple_repr
 
+GRAPH_NODE_TYPE = "PseudoTreeComputationNode"
+
 
 class PseudoTreeLink(Link):
     """
@@ -146,7 +148,7 @@ class PseudoTreeNode(ComputationNode):
         name: str = None,
     ) -> None:
         name = name if name is not None else variable.name
-        super().__init__(name, "PseudoTreeComputation", links=links)
+        super().__init__(name, GRAPH_NODE_TYPE, links=links)
         self._variable = variable
         self._constraints = tuple(constraints)
 

@@ -34,12 +34,13 @@ from typing import Iterable, Union
 from typing import List
 from typing import Set
 
-from pydcop.computations_graph.objects import ComputationNode, Link,\
-    ComputationGraph
+from pydcop.computations_graph.objects import ComputationNode, Link, ComputationGraph
 from pydcop.dcop.dcop import DCOP
 from pydcop.dcop.objects import Variable
 from pydcop.dcop.relations import Constraint, find_dependent_relations
 from pydcop.utils.simple_repr import SimpleRepr, simple_repr, from_repr
+
+GRAPH_NODE_TYPE = 'FactorGraph'
 
 
 class FactorComputationNode(ComputationNode):
@@ -63,7 +64,7 @@ class FactorComputationNode(ComputationNode):
         links = []
         for v in factor.dimensions:
             links.append(FactorGraphLink(name, v.name))
-        super().__init__(name, 'FactorComputation', links=links)
+        super().__init__(name, GRAPH_NODE_TYPE, links=links)
         self._factor = factor
         self._variables = list(factor.dimensions)
 
@@ -126,7 +127,7 @@ class VariableComputationNode(ComputationNode):
         links = []
         for c in self._constraints_names:
             links.append(FactorGraphLink(c, name))
-        super().__init__(name, 'VariableComputation', links=links)
+        super().__init__(name, "VariableComputationNode", links=links)
         self._variable = variable
 
     @property
@@ -232,7 +233,7 @@ class ComputationsFactorGraph(ComputationGraph):
                 raise KeyError('duplicate computation names: {}'.format(
                     vn.name))
             c_names.add(vn.name)
-        super().__init__('FactorGraph', nodes=nodes)
+        super().__init__(GRAPH_NODE_TYPE, nodes=nodes)
 
     def density(self):
 

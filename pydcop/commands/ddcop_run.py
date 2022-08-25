@@ -166,7 +166,7 @@ def run_cmd(args, timer=None, timeout=None):
     scenario = load_scenario_from_file(args.scenario)
 
     logger.info("Building computation graph")
-    cg = dynamic_graph.build_computation_graph(dcop)
+    cg = dynamic_graph.build_computation_graph(dcop, graph_module=graph_module)
 
     logger.info("Distributing computation graph ")
     if dist_module is not None:

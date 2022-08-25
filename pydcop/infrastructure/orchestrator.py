@@ -28,22 +28,21 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 import threading
+import time
+from collections import defaultdict
 from queue import Queue
 from time import perf_counter
 from typing import Dict, Tuple, Callable
 from typing import List
 from typing import Optional, Any
 
-from collections import defaultdict
-
-import time
 import yaml
 
 from pydcop.algorithms import AlgorithmDef, ComputationDef
 from pydcop.commands.distribute import load_algo_module
-from pydcop.dcop.relations import filter_assignment_dict
 from pydcop.computations_graph.objects import ComputationGraph
 from pydcop.dcop.dcop import DCOP
+from pydcop.dcop.relations import filter_assignment_dict
 from pydcop.dcop.scenario import Scenario
 from pydcop.distribution import gh_cgdp
 from pydcop.distribution.objects import Distribution
@@ -1417,7 +1416,7 @@ class DynamicAgentsMgt(AgentsMgt):
                 metrics_on=self._collect_moment,
                 metrics_period=self._collect_period,
                 ui_port=ui_port,
-                stabilization_algorithm=orchestrator.stabilization_algorithm
+                stabilization_algorithm=orchestrator.stabilization_algorithm,
             )
 
             # start agent and deploy computations to agent

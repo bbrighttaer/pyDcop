@@ -30,13 +30,12 @@
 
 
 import logging
-from time import perf_counter
 from typing import Dict, List, Set, Union
 
 from pydcop.algorithms import ComputationDef
 from pydcop.dcop.objects import AgentDef
 from pydcop.infrastructure.agents import ResilientAgent, DynamicAgent
-from pydcop.infrastructure.communication import CommunicationLayer, MSG_VALUE, MSG_MGT
+from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT
 from pydcop.infrastructure.computations import (
     MessagePassingComputation,
     Message,

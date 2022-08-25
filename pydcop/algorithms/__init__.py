@@ -350,9 +350,10 @@ class ComputationDef(SimpleRepr):
         algorithm definition ans an `AlgoDef` instance.
     """
 
-    def __init__(self, node: ComputationNode, algo: AlgorithmDef) -> None:
+    def __init__(self, node: ComputationNode, algo: AlgorithmDef, exec_mode: str = 'static') -> None:
         self._node = node
         self._algo = algo
+        self._exec_mode = exec_mode
 
     @property
     def algo(self) -> 'AlgorithmDef':
@@ -362,9 +363,21 @@ class ComputationDef(SimpleRepr):
     def node(self) -> ComputationNode:
         return self._node
 
+    @node.setter
+    def node(self, n):
+        self._node = n
+
     @property
     def name(self):
         return self.node.name
+
+    @property
+    def exec_mode(self):
+        return self._exec_mode
+
+    @exec_mode.setter
+    def exec_mode(self, m):
+        self._exec_mode = m
 
     def __str__(self):
         return 'ComputationDef({}, {})'.format(self.node.name, self.algo.algo)
