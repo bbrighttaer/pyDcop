@@ -55,16 +55,6 @@ ParentAssigned = message_type(
     fields=['agent_id', 'address'],
 )
 
-Ping = message_type(
-    'ping',
-    fields=['agent_id', 'address'],
-)
-
-PingResponse = message_type(
-    'ping_response',
-    fields=['agent_id', 'address'],
-)
-
 KeepAlive = message_type(
     'keep_alive',
     fields=['agent_id', 'address'],
@@ -102,7 +92,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.connect_interval: Seconds = 5
         self.announce_response_listening_time: Seconds = 1
 
-        self.keep_alive_msg_queue = []
+        self.keep_alive_agents = []
         self.keep_alive_check_interval: Seconds = 5
         self.keep_alive_msg_interval: Seconds = 2
 
@@ -302,24 +292,24 @@ class DIGCA(DynamicGraphConstructionComputation):
 
     def _receive_keep_alive(self, sender: str, msg: KeepAlive):
         self.logger.debug(f'Received keep alive msg: {msg}')
-        if msg.agent_id not in self.keep_alive_msg_queue:
-            self.keep_alive_msg_queue.append(msg.agent_id)
+        if msg.agent_id not in self.keep_alive_agents:
+            self.keep_alive_agents.append(msg.agent_id)
 
     def _inspect_connections(self):
         """
         Checks the keep alive queue and remove connections deemed stale.
         """
-        self.logger.debug(f'Inspecting connections: {self.keep_alive_msg_queue}')
+        self.logger.debug(f'Inspecting connections: {self.keep_alive_agents}')
         affected = False
         for neighbor in self.neighbors:
-            if neighbor.agent_id not in self.keep_alive_msg_queue:
-                self.logger.debug(f'did not hear from {neighbor.agent_id}')
+            if neighbor.agent_id not in self.keep_alive_agents:
+                self.logger.debug(f'Did not hear from {neighbor.agent_id}')
                 self.unregister_neighbor(neighbor, callback=self._on_neighbor_removed)
 
         if affected:
             self.configure_computations()
             self._execute_computations(is_reconfiguration=True)
-        self.keep_alive_msg_queue.clear()
+        self.keep_alive_agents.clear()
 
     def _on_neighbor_removed(self, neighbor: Neighbor, *args, **kwargs):
         # if parent was removed, set state to in-active to allow a new parent search (connect call).
