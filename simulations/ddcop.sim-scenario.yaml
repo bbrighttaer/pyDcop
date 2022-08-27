@@ -6,16 +6,20 @@ events:
   - type: add_agent
     agent: a0
 - id: w1
-  delay: 1
+  delay: 5
 - id: e1
   actions:
   - type: add_agent
     agent: a1
 - id: w2
-  delay: 1
+  delay: 5
 - id: e2
   actions:
   - type: add_agent
     agent: a2
 - id: w3
-  delay: 1
+  delay: 10
+#- id: e3
+#  actions:
+#  - type: remove_agent
+#    agent: a0

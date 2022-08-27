@@ -1373,9 +1373,9 @@ class DynamicAgentsMgt(AgentsMgt):
                 self._send_mgt_msg(agt, AgentRemovedMessage())
                 leaving_agents.append(agt)
 
-            elif a.type == 'change_constraint':
-                self.logger.info('Event action: Change constraint %s ', a)
-                raise ValueError(f'Unknown event action ' + str(a))
+            # elif a.type == 'change_constraint':
+            #     self.logger.info('Event action: Change constraint %s ', a)
+            #     raise ValueError(f'Unknown event action ' + str(a))
 
             else:
                 self.logger.error('Unknown event action %s ', a)

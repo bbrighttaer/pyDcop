@@ -1,18 +1,20 @@
 import enum
 import random
-import threading
 import time
-from collections import namedtuple
 from threading import Event
+from typing import List, Dict
 
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.communication import ComputationMessage, MSG_ALGO
-from pydcop.infrastructure.computations import MessagePassingComputation, Message, message_type
+from pydcop.infrastructure.computations import MessagePassingComputation, message_type
 from pydcop.infrastructure.discovery import Discovery, BroadcastMessage
 from pydcop.infrastructure.orchestrator import ORCHESTRATOR
 from pydcop.stabilization.base import DynamicGraphConstructionComputation, Neighbor
 
 NAME = 'DIGCA'
+
+Seconds = int
+AgentID = str
 
 
 # states
@@ -91,10 +93,13 @@ class DIGCA(DynamicGraphConstructionComputation):
 
         self.state = State.INACTIVE
         self.announce_response_list = []
-        self.connect_interval = 5  # in seconds
-        self.announce_response_listening_time = 1  # in seconds
+        self.connect_interval: Seconds = 5
+        self.announce_response_listening_time: Seconds = 1
 
-        self._periodic_calls_cancel_list = []
+        self.ping_interval: Seconds = 2
+        self.ping_response_listening_time: Seconds = 2
+        self.ping_register: Dict[AgentID, Neighbor] = {}
+        self.ping_event = Event()
 
         self._msg_handlers = {
             'announce': self._receive_announce,
@@ -113,24 +118,10 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.connect()
 
         # make subsequent (repeated) connect calls in `self.connect_interval` seconds
-        cancel_connect = self._periodic_action(self.connect_interval, self.connect)
-        self._periodic_calls_cancel_list.append(cancel_connect)
+        self.add_periodic_action(self.connect_interval, self.connect)
 
-    def on_message(self, sender: str, msg: Message, t: float):
-        try:
-            self._msg_handlers[msg.type](sender, msg)
-        except KeyError:
-            self.logger.error(f'Could not find function callback for msg type: {msg.type}')
-
-    def _periodic_action(self, interval: int, func, *args, **kwargs):
-        stopped = Event()
-
-        def loop():
-            while not self.agent._stopping.is_set() and not stopped.wait(interval):
-                func(*args, **kwargs)
-
-        threading.Thread(target=loop).start()
-        return stopped.set
+        # start process for connection maintenance
+        self.add_periodic_action(self.ping_interval, self.ping)
 
     def connect(self):
         if self.state == State.INACTIVE and not self.parent:
@@ -163,7 +154,7 @@ class DIGCA(DynamicGraphConstructionComputation):
                     msg=AddMe(
                         agent_id=self.agent.name,
                         address=self.address,
-                        comps=[c.name for c in self.computations]
+                        comps=[c.name for c in self.computations] + [self.name]
                     ),
                     msg_type=MSG_ALGO,
                 )
@@ -220,7 +211,7 @@ class DIGCA(DynamicGraphConstructionComputation):
                 msg=ChildAdded(
                     agent_id=self.agent.name,
                     address=self.address,
-                    comps=[c.name for c in self.computations]
+                    comps=[c.name for c in self.computations] + [self.name]
                 ),
                 msg_type=MSG_ALGO,
             )
@@ -287,18 +278,63 @@ class DIGCA(DynamicGraphConstructionComputation):
         # execute computation (if topdown/async)
         self._execute_computations('top-down')
 
-    def _receive_ping(self, sender: str, msg: Ping):
-        ...
-
-    def _receive_ping_response(self, sender: str, msg: PingResponse):
-        ...
-
     def _phi(self, agt_id):
         return self.agent.name < agt_id
 
-    def on_stop(self):
-        for cancel in self._periodic_calls_cancel_list:
-            cancel()
+    """ Connection stabilization section """
 
+    def ping(self):
+        # ping neighbors
+        for neighbor in list(self.neighbors):
+            if neighbor.agent_id not in self.ping_register:
+                self.logger.debug(f'Pinging {neighbor.agent_id}')
 
+                self.post_msg(
+                    target=f'{NAME}-{neighbor.agent_id}',
+                    msg=Ping(
+                        agent_id=self.agent.name,
+                        address=self.address,
+                    ),
+                    prio=0,
+                )
 
+                # add to ping register
+                self.ping_register[neighbor.agent_id] = neighbor
+
+        # wait to hear from neighbors
+        time.sleep(self.ping_response_listening_time)
+
+        # remove agents that are no longer connected (we didn't hear from them)
+        configure = False
+        for n_id in list(self.ping_register.keys()):
+            self.unregister_neighbor(self.ping_register[n_id], callback=self._on_neighbor_removed)
+            configure = True
+
+        # update computation links
+        if configure:
+            self.configure_computations()
+            self._execute_computations(is_reconfiguration=True)
+
+    def _receive_ping(self, sender: str, msg: Ping):
+        # respond to sender
+        self.post_msg(
+            target=sender,
+            msg=PingResponse(
+                agent_id=self.agent.name,
+                address=self.address,
+            ),
+            prio=0,
+        )
+
+    def _receive_ping_response(self, sender: str, msg: PingResponse):
+        # remove from ping register
+        if msg.agent_id in self.ping_register:
+            self.ping_register.pop(msg.agent_id)
+
+    def _on_neighbor_removed(self, neighbor: Neighbor, *args, **kwargs):
+        # if parent was removed, set state to in-active to allow a new parent search (connect call).
+        if kwargs.get('neighbor_type', None) == 'parent':
+            self.state = State.INACTIVE
+
+        # remove from ping register
+        self.ping_register.pop(neighbor.agent_id)
