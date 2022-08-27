@@ -1471,3 +1471,8 @@ class DynamicAgent(Agent):
 
         return True
 
+    def _on_stop(self):
+        super(DynamicAgent, self)._on_stop()
+        self.clean_shutdown()
+        self.logger.info(f'Agent {self.name} stopped')
+

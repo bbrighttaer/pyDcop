@@ -1,6 +1,8 @@
 import logging
+import threading
 from collections import namedtuple
-from typing import List, Iterable
+from threading import Event
+from typing import List, Iterable, Callable, Union
 
 from pydcop.algorithms import ComputationDef
 from pydcop.computations_graph.constraints_hypergraph import ConstraintLink
@@ -8,7 +10,7 @@ from pydcop.computations_graph.dynamic_graph import DynamicComputationNode
 from pydcop.computations_graph.pseudotree import PseudoTreeLink, get_dfs_relations
 from pydcop.dcop.relations import Constraint
 from pydcop.infrastructure.agents import DynamicAgent
-from pydcop.infrastructure.computations import MessagePassingComputation
+from pydcop.infrastructure.computations import MessagePassingComputation, Message
 from pydcop.infrastructure.discovery import Discovery
 
 Neighbor = namedtuple(
@@ -39,6 +41,11 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         # added to avoid AttributeError on metric collection
         self.cycle_count = 0
 
+        self._periodic_calls_cancel_list = []
+
+        # supposed to be overridden by subclass to handle messages
+        self._msg_handlers = {}
+
     @property
     def neighbors(self) -> List[Neighbor]:
         nodes = self.children
@@ -50,12 +57,31 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
     def computations(self) -> List[MessagePassingComputation]:
         return self._dcop_comps
 
+    def find_neighbor_by_agent_id(self, agent_id) -> Union[Neighbor, None]:
+        for n in self.neighbors:
+            if n.agent_id == agent_id:
+                return n
+
+    def on_message(self, sender: str, msg: Message, t: float):
+        try:
+            self._msg_handlers[msg.type](sender, msg)
+        except KeyError:
+            self.logger.error(f'Could not find function callback for msg type: {msg.type}')
+
     def add_computation(self, comp):
+        """
+        Adds a computation to those handled by the dynamic graph algorithm.
+
+        Parameters
+        ----------
+        comp: MessagePassingComputation
+            The computation to be added
+        """
         self.logger.debug(f'Adding computation: {str(comp)}')
         self._dcop_comps.append(comp)
         self.agent.run(comp.name)
 
-    def register_neighbor(self, neighbor: Neighbor):
+    def register_neighbor(self, neighbor: Neighbor, callback: Callable = None):
         configure = False
         for comp in neighbor.computations:
             self.discovery.register_computation(
@@ -66,8 +92,38 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
             )
             self.neighbor_comps.append(comp)
             configure = True
+        self.logger.debug(f'registered neighbor {neighbor.agent_id}, comps={self.neighbor_comps}')
         if configure:
             self.configure_computations()
+
+            if callback:
+                callback(neighbor)
+
+    def unregister_neighbor(self, neighbor: Neighbor, callback: Callable = None):
+        self.logger.debug(f'Unregistering neighbor {neighbor.agent_id}')
+
+        if neighbor:
+            # remove all computations stored at the dynamic algorithm level
+            comps = self.discovery.agent_computations(neighbor.agent_id)
+            self.logger.debug(f'comps: {comps}, n_comps: {self.neighbor_comps}')
+            for c in comps:
+                if c in self.neighbor_comps:
+                    self.neighbor_comps.remove(c)
+
+            # unregister agent and computations from discovery
+            self.discovery.unregister_agent(neighbor.agent_id, publish=False)
+
+            # remove associations
+            if self.parent == neighbor:
+                neighbor_type = 'parent'
+                self.parent = None
+            else:
+                neighbor_type = 'child'
+                self.children.remove(neighbor)
+
+            # fire callback
+            if callback:
+                callback(neighbor=neighbor, neighbor_type=neighbor_type)
 
     def configure_computations(self):
         """
@@ -119,10 +175,30 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         dynamic_node.links = links
         dynamic_node.neighbors = list(set(n for l in links for n in l.nodes if n != dynamic_node.name))
 
-    def _execute_computations(self, exec_order):
-        for computation in self.computations:
-            if hasattr(computation, 'computation_def'):
-                algo_exec_order = computation.computation_def.algo.params.get('execution_order', None)
-                if algo_exec_order is None or algo_exec_order == exec_order:
-                    computation.start()
+    def _execute_computations(self, exec_order=None, is_reconfiguration=False):
+        if self.neighbors:
+            for computation in self.computations:
+                if hasattr(computation, 'computation_def'):
+                    algo_exec_order = computation.computation_def.algo.params.get('execution_order', None)
+                    if algo_exec_order is None or algo_exec_order == exec_order or is_reconfiguration:
+                        self.logger.debug(f'Executing dcop, neighbors {computation.computation_def.node.neighbors}')
+                        computation.start()
+        else:
+            self.logger.debug('No neighbors available for computation')
 
+    def on_stop(self):
+        # cancel any background process
+        for cancel in self._periodic_calls_cancel_list:
+            cancel()
+
+        # stop all computations
+        for comp in self.computations:
+            comp.stop()
+
+    def _periodic_action(self, interval: int, func, *args, **kwargs):
+        stopped = Event()
+        def loop():
+            while not self.agent._stopping.is_set() and not stopped.wait(interval):
+                func(*args, **kwargs)
+        threading.Thread(target=loop).start()
+        return stopped.set
