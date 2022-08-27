@@ -48,7 +48,7 @@ import traceback
 import random
 from functools import partial
 from importlib import import_module
-from threading import Thread
+from threading import Thread, Lock
 from time import perf_counter, sleep
 from typing import Dict, List, Optional, Union, Callable, Tuple
 
@@ -1448,6 +1448,9 @@ class DynamicAgent(Agent):
     def __init__(self, name: str, comm: CommunicationLayer, agent_def: AgentDef,
                  ui_port=None, delay: float = None, stabilization_algorithm: str = None):
         super(DynamicAgent, self).__init__(name, comm, agent_def, ui_port=ui_port, delay=delay)
+
+        # lock for enabling synchronization of operations that could otherwise lead to race-conditions
+        self.sync_lock = Lock()
 
         if stabilization_algorithm:
             self.logger.debug(f'Setting up {stabilization_algorithm} stabilization algorithm')

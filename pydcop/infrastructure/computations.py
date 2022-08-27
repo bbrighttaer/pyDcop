@@ -40,6 +40,7 @@ your own DCOP algorithm.
 import logging
 from functools import wraps
 from importlib import import_module
+from threading import Lock
 from typing import List, Tuple, Any, Callable, Dict, Optional
 
 from numpy import random
@@ -890,6 +891,17 @@ class DcopComputation(MessagePassingComputation):
             a list containing the names of the neighbor computations.
         """
         return list(self.computation_def.node.neighbors)
+
+    def on_message(self, *args, **kwargs):
+        """
+        Before handling message, check for synchronization.
+        if synchronization lock is available (when dynamic exec mode) acquire it before running dcop ops.
+        """
+        if hasattr(self, 'sync_lock'):
+            with self.sync_lock:
+                super(DcopComputation, self).on_message(*args, **kwargs)
+        else:
+            super(DcopComputation, self).on_message(*args, **kwargs)
 
     @property
     def cycle_count(self):

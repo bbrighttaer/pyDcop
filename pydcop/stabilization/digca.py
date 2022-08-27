@@ -1,6 +1,7 @@
 import enum
 import random
 import time
+from queue import Queue, Empty
 from threading import Event
 from typing import List, Dict
 
@@ -64,6 +65,11 @@ PingResponse = message_type(
     fields=['agent_id', 'address'],
 )
 
+KeepAlive = message_type(
+    'keep_alive',
+    fields=['agent_id', 'address'],
+)
+
 
 def build_stabilization_computation(agent: DynamicAgent, discovery: Discovery) -> MessagePassingComputation:
     """
@@ -96,10 +102,9 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.connect_interval: Seconds = 5
         self.announce_response_listening_time: Seconds = 1
 
-        self.ping_interval: Seconds = 2
-        self.ping_response_listening_time: Seconds = 2
-        self.ping_register: Dict[AgentID, Neighbor] = {}
-        self.ping_event = Event()
+        self.keep_alive_msg_queue = []
+        self.connection_check_interval: Seconds = 4
+        self.keep_alive_msg_interval: Seconds = 3
 
         self._msg_handlers = {
             'announce': self._receive_announce,
@@ -108,22 +113,22 @@ class DIGCA(DynamicGraphConstructionComputation):
             'child_added': self._receive_child_added,
             'parent_assigned': self._receive_parent_assigned,
             'already_active': self._receive_already_active,
-            'ping': self._receive_ping,
-            'ping_response': self._receive_ping_response,
+            'keep_alive': self._receive_keep_alive,
         }
 
     def on_start(self):
         self.logger.debug(f'On start of {self.name}')
         # make a first connect call on startup
-        self.connect()
+        self._connect()
 
         # make subsequent (repeated) connect calls in `self.connect_interval` seconds
-        self.add_periodic_action(self.connect_interval, self.connect)
+        self.add_periodic_action(self.connect_interval, self._connect)
 
-        # start process for connection maintenance
-        self.add_periodic_action(self.ping_interval, self.ping)
+        # start processes for connection maintenance
+        self.add_periodic_action(self.connection_check_interval, self._inspect_connections)
+        self.add_periodic_action(self.keep_alive_msg_interval, self._send_keep_alive_msg)
 
-    def connect(self):
+    def _connect(self):
         if self.state == State.INACTIVE and not self.parent:
             self.logger.debug('DIGCA is connecting...')
 
@@ -283,6 +288,44 @@ class DIGCA(DynamicGraphConstructionComputation):
 
     """ Connection stabilization section """
 
+    def _send_keep_alive_msg(self):
+        for neighbor in self.neighbors:
+            self.logger.debug(f'Sending keep alive to {neighbor.agent_id}')
+            self.post_msg(
+                target=f'{NAME}-{neighbor.agent_id}',
+                msg=KeepAlive(
+                    agent_id=self.agent.name,
+                    address=self.address,
+                ),
+                prio=0,
+            )
+
+    def _receive_keep_alive(self, sender: str, msg: KeepAlive):
+        self.logger.debug(f'Received keep alive msg: {msg}')
+        if msg.agent_id not in self.keep_alive_msg_queue:
+            self.keep_alive_msg_queue.append(msg.agent_id)
+
+    def _inspect_connections(self):
+        """
+        Checks the keep alive queue and remove connections deemed stale.
+        """
+        self.logger.debug('Inspecting connections')
+        affected = False
+        with self.agent.sync_lock:
+            # remove stale connections
+            for neighbor in list(self.neighbors):
+                if neighbor.agent_id not in self.keep_alive_msg_queue:
+                    self.unregister_neighbor(neighbor, callback=self._on_neighbor_removed)
+                    affected = True
+
+            self.keep_alive_msg_queue.clear()
+
+            if affected:
+                self.configure_computations()
+
+        if affected:
+            self._execute_computations(is_reconfiguration=True)
+
     def ping(self):
         # ping neighbors
         for neighbor in list(self.neighbors):
@@ -337,4 +380,4 @@ class DIGCA(DynamicGraphConstructionComputation):
             self.state = State.INACTIVE
 
         # remove from ping register
-        self.ping_register.pop(neighbor.agent_id)
+        # self.ping_register.pop(neighbor.agent_id)

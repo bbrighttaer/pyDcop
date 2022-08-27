@@ -1,4 +1,3 @@
-import sys
 from collections import defaultdict
 
 from pydcop.algorithms import ComputationDef, AlgoParameterDef
