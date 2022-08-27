@@ -48,7 +48,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
 
     @property
     def neighbors(self) -> List[Neighbor]:
-        nodes = self.children
+        nodes = list(self.children)
         if self.parent:
             nodes += [self.parent]
         return nodes
@@ -79,6 +79,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         """
         self.logger.debug(f'Adding computation: {str(comp)}')
         self._dcop_comps.append(comp)
+        setattr(comp, 'sync_lock', self.agent.sync_lock)
         self.agent.run(comp.name)
 
     def register_neighbor(self, neighbor: Neighbor, callback: Callable = None):

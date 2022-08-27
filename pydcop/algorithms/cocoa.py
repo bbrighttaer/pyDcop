@@ -119,6 +119,9 @@ class CoCoA(VariableComputation):
                 constraint = c
                 break
 
+        if constraint is None:
+            return
+
         # Each constraint has two nodes. The current node is always assumed as var1.
         # This way, the domain of var1 form the rows and domain of var2 form the columns of the cost matrix
         variables = constraint.dimensions
