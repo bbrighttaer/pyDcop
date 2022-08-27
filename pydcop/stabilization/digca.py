@@ -103,8 +103,8 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.announce_response_listening_time: Seconds = 1
 
         self.keep_alive_msg_queue = []
-        self.connection_check_interval: Seconds = 4
-        self.keep_alive_msg_interval: Seconds = 3
+        self.keep_alive_check_interval: Seconds = 5
+        self.keep_alive_msg_interval: Seconds = 2
 
         self._msg_handlers = {
             'announce': self._receive_announce,
@@ -125,7 +125,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.add_periodic_action(self.connect_interval, self._connect)
 
         # start processes for connection maintenance
-        self.add_periodic_action(self.connection_check_interval, self._inspect_connections)
+        self.add_periodic_action(self.keep_alive_check_interval, self._inspect_connections)
         self.add_periodic_action(self.keep_alive_msg_interval, self._send_keep_alive_msg)
 
     def _connect(self):
@@ -309,75 +309,19 @@ class DIGCA(DynamicGraphConstructionComputation):
         """
         Checks the keep alive queue and remove connections deemed stale.
         """
-        self.logger.debug('Inspecting connections')
+        self.logger.debug(f'Inspecting connections: {self.keep_alive_msg_queue}')
         affected = False
-        with self.agent.sync_lock:
-            # remove stale connections
-            for neighbor in list(self.neighbors):
-                if neighbor.agent_id not in self.keep_alive_msg_queue:
-                    self.unregister_neighbor(neighbor, callback=self._on_neighbor_removed)
-                    affected = True
-
-            self.keep_alive_msg_queue.clear()
-
-            if affected:
-                self.configure_computations()
+        for neighbor in self.neighbors:
+            if neighbor.agent_id not in self.keep_alive_msg_queue:
+                self.logger.debug(f'did not hear from {neighbor.agent_id}')
+                self.unregister_neighbor(neighbor, callback=self._on_neighbor_removed)
 
         if affected:
-            self._execute_computations(is_reconfiguration=True)
-
-    def ping(self):
-        # ping neighbors
-        for neighbor in list(self.neighbors):
-            if neighbor.agent_id not in self.ping_register:
-                self.logger.debug(f'Pinging {neighbor.agent_id}')
-
-                self.post_msg(
-                    target=f'{NAME}-{neighbor.agent_id}',
-                    msg=Ping(
-                        agent_id=self.agent.name,
-                        address=self.address,
-                    ),
-                    prio=0,
-                )
-
-                # add to ping register
-                self.ping_register[neighbor.agent_id] = neighbor
-
-        # wait to hear from neighbors
-        time.sleep(self.ping_response_listening_time)
-
-        # remove agents that are no longer connected (we didn't hear from them)
-        configure = False
-        for n_id in list(self.ping_register.keys()):
-            self.unregister_neighbor(self.ping_register[n_id], callback=self._on_neighbor_removed)
-            configure = True
-
-        # update computation links
-        if configure:
             self.configure_computations()
             self._execute_computations(is_reconfiguration=True)
-
-    def _receive_ping(self, sender: str, msg: Ping):
-        # respond to sender
-        self.post_msg(
-            target=sender,
-            msg=PingResponse(
-                agent_id=self.agent.name,
-                address=self.address,
-            ),
-            prio=0,
-        )
-
-    def _receive_ping_response(self, sender: str, msg: PingResponse):
-        # remove from ping register
-        if msg.agent_id in self.ping_register:
-            self.ping_register.pop(msg.agent_id)
+        self.keep_alive_msg_queue.clear()
 
     def _on_neighbor_removed(self, neighbor: Neighbor, *args, **kwargs):
         # if parent was removed, set state to in-active to allow a new parent search (connect call).
         if kwargs.get('neighbor_type', None) == 'parent':
             self.state = State.INACTIVE
-
-        # remove from ping register
-        # self.ping_register.pop(neighbor.agent_id)
