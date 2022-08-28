@@ -35,7 +35,7 @@ def build_stabilization_computation(agent: DynamicAgent, discovery: Discovery) -
     -------
     A computation object to dynamically construct a local interaction graph for the agent.
     """
-    return DistributedDFS(agent, discovery)
+    return DistributedDFS(NAME, agent, discovery)
 
 
 class DistributedDFS(DynamicGraphConstructionComputation):
@@ -43,8 +43,8 @@ class DistributedDFS(DynamicGraphConstructionComputation):
     Implementation of the DDFS algorithm for dynamic DCOP
     """
 
-    def __init__(self, agent: DynamicAgent, discovery: Discovery):
-        super(DistributedDFS, self).__init__(NAME, agent, discovery)
+    def __init__(self, name, agent: DynamicAgent, discovery: Discovery):
+        super(DistributedDFS, self).__init__(name, agent, discovery)
 
         self._registered_neighbors: Dict[AgentID, Neighbor] = {}
         self._max_degree_register: Dict[AgentID, MaxDegree] = {}
@@ -58,10 +58,10 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         self.num_acquaintances = 0
 
         self._shutdown = False
-        self._affected_event = Event()
+        self._split_event = Event()
         self._all_neighbor_max_degrees_event = Event()
         self._execute_dcop_event = Event()
-        self.t = Thread(target=self._lambda_split, name=f'thread_{self.name}_lambda_split')
+        self.t = Thread(target=self._lambda_split, name=f'thread_{self.name}_bg_process')
         self.t.daemon = True
 
     def on_start(self):
@@ -73,7 +73,7 @@ class DistributedDFS(DynamicGraphConstructionComputation):
 
         dynamic_node: DynamicComputationNode = computation.computation_def.node
         var_constraints: Iterable[Constraint] = dynamic_node.var_constraints
-        # self.num_acquaintances = len(var_constraints)
+        self.num_acquaintances = len(var_constraints)
 
         for constraint in var_constraints:
             self.logger.debug(f'constraint {constraint.name} scope = {constraint.scope_names}')
@@ -86,7 +86,6 @@ class DistributedDFS(DynamicGraphConstructionComputation):
 
     def _on_neighbor_computation_added_and_removed(self, cb_type: str, computation: str, agent_name: str):
         if cb_type == 'computation_added':
-            self.num_acquaintances += 1
             self.logger.debug(f'On neighbor computation added: {cb_type}, {computation}, {agent_name}')
 
             # register corresponding DDFS computation of neighbor.
@@ -111,11 +110,10 @@ class DistributedDFS(DynamicGraphConstructionComputation):
                 msg=MaxDegreeRequest(agent_id=self.agent.name),
             )
         elif cb_type == 'computation_removed':
-            self.num_acquaintances -= 1
             self.logger.debug(f'Removing neighbor computation {cb_type}, {computation}')
             self._unregister_neighbor_comp(computation)
 
-        self._affected_event.set()
+        self._split_event.set()
 
     def _unregister_neighbor_comp(self, computation: str):
         agent = self.discovery.computation_agent(computation)
@@ -126,7 +124,7 @@ class DistributedDFS(DynamicGraphConstructionComputation):
             self.neighbor_comps.remove(computation)
             self.neighbor_comps.remove(f'{NAME}-{agent}')
 
-        self._affected_event.set()
+        self._split_event.set()
 
     def _on_max_degree_request(self, sender: str, msg: MaxDegreeRequest):
         self.post_msg(
@@ -144,7 +142,7 @@ class DistributedDFS(DynamicGraphConstructionComputation):
 
     def _lambda_split(self):
         # monitor affected status
-        while self._affected_event.wait():
+        while self._split_event.wait():
             if self._shutdown:
                 break
 
@@ -157,13 +155,14 @@ class DistributedDFS(DynamicGraphConstructionComputation):
             # set flags
             self.logger.debug(f'Resetting lambda_split flags')
             self._all_neighbor_max_degrees_event.clear()
-            self._affected_event.clear()
+            self._split_event.clear()
 
     def _split(self):
         self.logger.debug('splitting neighbors')
 
         parent = None
         children = []
+        self.logger.debug(f'max-degree: {self._max_degree_register}')
         for agt in self._registered_neighbors:
             neighbor: Neighbor = self._registered_neighbors[agt]
             if self._max_degree_register[agt] < self.num_acquaintances or (
