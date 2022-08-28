@@ -197,6 +197,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
 
         # stop all computations
         for comp in self.computations:
+            self.discovery.unregister_computation(comp.name, agent=self.agent.name)
             comp.stop()
 
     def _periodic_action(self, interval: int, func, *args, **kwargs):

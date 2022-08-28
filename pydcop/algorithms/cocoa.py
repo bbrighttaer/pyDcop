@@ -185,7 +185,10 @@ class CoCoA(VariableComputation):
         self.logger.debug(f'{self.neighbors}, {self.cost_msgs}, {self.computation_def.exec_mode}')
         if (len(self.neighbors) == len(self.cost_msgs) and not self.current_value)\
                 or self.computation_def.exec_mode == 'dynamic':
-            self.select_value()
+            try:
+                self.select_value()
+            except KeyError as e:
+                self.logger.debug(f'Aborting, cannot find a variable: {str(e)}')
 
     @register(CoCoAMessage.UPDATE_STATE_MESSAGE)
     def _on_update_state_message(self, variable_name: str, recv_msg: CoCoAMessage, t: int):
