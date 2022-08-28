@@ -972,6 +972,11 @@ class DcopComputation(MessagePassingComputation):
         for neighbor in self.neighbors:
             self.post_msg(neighbor, msg, prio, on_error)
 
+    def finished(self):
+        if self.computation_def.exec_mode == 'dynamic':
+            self.pause(True)
+        super(DcopComputation, self).finished()
+
     def __repr__(self):
         return "{}.{}({})".format(self.algo_name, self.__class__.__name__, self.name)
 

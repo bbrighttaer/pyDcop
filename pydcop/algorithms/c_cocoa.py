@@ -87,6 +87,8 @@ class CCoCoA(CoCoA):
 
         except AssertionError as e:
             self.logger.error(f"{str(e)}, falling back to CoCoA")
+        except KeyError as e:
+            self.logger.error(f"Aborting, could not find a variable: {str(e)}")
 
         return super(CCoCoA, self)._calculate_cost(var_values)
 

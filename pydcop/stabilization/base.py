@@ -1,22 +1,17 @@
 import logging
 import threading
-from collections import namedtuple
 from threading import Event
 from typing import List, Iterable, Callable, Union
 
 from pydcop.algorithms import ComputationDef
 from pydcop.computations_graph.constraints_hypergraph import ConstraintLink
 from pydcop.computations_graph.dynamic_graph import DynamicComputationNode
-from pydcop.computations_graph.pseudotree import PseudoTreeLink, get_dfs_relations
+from pydcop.computations_graph.pseudotree import PseudoTreeLink
 from pydcop.dcop.relations import Constraint
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.computations import MessagePassingComputation, Message
 from pydcop.infrastructure.discovery import Discovery
-
-Neighbor = namedtuple(
-    'Neighbor',
-    field_names=['agent_id', 'address', 'computations'],
-)
+from pydcop.stabilization import Neighbor
 
 
 class DynamicGraphConstructionComputation(MessagePassingComputation):
@@ -45,6 +40,9 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
 
         # supposed to be overridden by subclass to handle messages
         self._msg_handlers = {}
+
+        # callbacks
+        self._on_computation_added_cb: Union[Callable[[MessagePassingComputation], None], None] = None
 
     @property
     def neighbors(self) -> List[Neighbor]:
@@ -80,7 +78,11 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         self.logger.debug(f'Adding computation: {str(comp)}')
         self._dcop_comps.append(comp)
         setattr(comp, 'sync_lock', self.agent.sync_lock)
+        comp.pause(True)
         self.agent.run(comp.name)
+
+        if self._on_computation_added_cb:
+            self._on_computation_added_cb(comp)
 
     def register_neighbor(self, neighbor: Neighbor, callback: Callable = None):
         configure = False
@@ -143,7 +145,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
 
     def _configure(self, computation):
         """
-        Creates a computation node.
+        Sets up a computation node.
         """
         # get constraints
         constraints = []
@@ -176,13 +178,14 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         dynamic_node.links = links
         dynamic_node.neighbors = list(set(n for l in links for n in l.nodes if n != dynamic_node.name))
 
-    def _execute_computations(self, exec_order=None, is_reconfiguration=False):
+    def execute_computations(self, exec_order=None, is_reconfiguration=False):
         if self.neighbors:
             for computation in self.computations:
                 if hasattr(computation, 'computation_def'):
                     algo_exec_order = computation.computation_def.algo.params.get('execution_order', None)
                     if algo_exec_order is None or algo_exec_order == exec_order or is_reconfiguration:
                         self.logger.debug(f'Executing dcop, neighbors {computation.computation_def.node.neighbors}')
+                        computation.pause(False)
                         computation.start()
         else:
             self.logger.debug('No neighbors available for computation')
