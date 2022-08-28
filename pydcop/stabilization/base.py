@@ -34,7 +34,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         self.address = agent.address
         self._dcop_comps = []
 
-        self.parent: Neighbor = None
+        self.parent: Union[Neighbor, None] = None
         self.children: List[Neighbor] = []
         self.neighbor_comps: List[str] = []
 
