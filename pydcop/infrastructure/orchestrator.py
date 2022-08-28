@@ -1253,13 +1253,14 @@ class AgentsMgt(MessagePassingComputation):
                     continue
                 self._send_mgt_msg(agt, StopAgentMessage())
 
-    def _deploy_computation(self, agent_id: str):
+    def _deploy_computation(self, agent_id: str, exec_mode='static'):
         """Deploy computations hosted on agent `agent_id` """
         for c in self.initial_dist.computations_hosted(agent_id):
             self._nb_computations += 1
             self.logger.info('Deploying computation %s on %s', c, agent_id)
             comp_def = ComputationDef(self.graph.computation(c),
-                                      self._algo)
+                                      self._algo,
+                                      exec_mode=exec_mode)
             self._send_mgt_msg(agent_id, DeployMessage(comp_def))
             self.discovery.subscribe_computation(
                 comp_def.node.name, self._cb_computation_registration)
@@ -1421,7 +1422,15 @@ class DynamicAgentsMgt(AgentsMgt):
 
             # start agent and deploy computations to agent
             agent.start()
-            self._deploy_computation(agent_name)
+            self._deploy_computation(agent_name, 'dynamic')
         else:
             self.logger.error(f'DCOP definition that not have agent {agent_name}')
             raise ValueError(f'Agent {agent_name} not found in problem definition')
+
+    def _on_computation_end_msg(self, sender: str,
+                                msg: ComputationFinishedMessage, _: float):
+        self.logger.info('Received computation_end from %s : %s - %s',
+                         msg.agent, msg.computation, sender)
+
+        self._computation_status[msg.computation] = 'finished'
+        self.logger.debug(' status %s', self._computation_status.items())

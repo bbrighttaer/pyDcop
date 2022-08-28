@@ -120,6 +120,7 @@ class CoCoA(VariableComputation):
                 break
 
         if constraint is None:
+            self.logger.debug(f'No constraint found')
             return
 
         # Each constraint has two nodes. The current node is always assumed as var1.
@@ -181,7 +182,9 @@ class CoCoA(VariableComputation):
         self.cost_msgs[variable_name] = recv_msg.content
 
         # check if all neighbors have responded to cost inquiries
-        if len(self.neighbors) == len(self.cost_msgs) and not self.current_value:
+        self.logger.debug(f'{self.neighbors}, {self.cost_msgs}, {self.computation_def.exec_mode}')
+        if (len(self.neighbors) == len(self.cost_msgs) and not self.current_value)\
+                or self.computation_def.exec_mode == 'dynamic':
             self.select_value()
 
     @register(CoCoAMessage.UPDATE_STATE_MESSAGE)
@@ -307,9 +310,9 @@ class CoCoA(VariableComputation):
             self.logger.debug(f"Neighbor {selected_neighbor} selected to start")
             self.post_msg(selected_neighbor, CoCoAMessage(CoCoAMessage.START_DCOP_MESSAGE, None), on_error="fail")
         else:
+            self.logger.debug(f"No neighbor is available to start, done history: {self.done_state_history}")
+            self.finished()
             if self.computation_def.exec_mode != 'dynamic':
-                self.logger.debug(f"No neighbor is available to start, done history: {self.done_state_history}")
-                self.finished()
                 self.stop()
 
 

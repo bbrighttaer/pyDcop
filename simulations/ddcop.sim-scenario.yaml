@@ -12,7 +12,7 @@ events:
   - type: add_agent
     agent: a1
 - id: w2
-  delay: 10
+  delay: 5
 - id: e2
   actions:
   - type: add_agent
@@ -23,3 +23,5 @@ events:
   actions:
   - type: remove_agent
     agent: a0
+- id: w3
+  delay: 10

@@ -1,21 +1,16 @@
 import enum
 import random
 import time
-from queue import Queue, Empty
-from threading import Event
-from typing import List, Dict
 
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.communication import ComputationMessage, MSG_ALGO
 from pydcop.infrastructure.computations import MessagePassingComputation, message_type
 from pydcop.infrastructure.discovery import Discovery, BroadcastMessage
 from pydcop.infrastructure.orchestrator import ORCHESTRATOR
-from pydcop.stabilization.base import DynamicGraphConstructionComputation, Neighbor
+from pydcop.stabilization import Neighbor, Seconds
+from pydcop.stabilization.base import DynamicGraphConstructionComputation
 
 NAME = 'DIGCA'
-
-Seconds = int
-AgentID = str
 
 
 # states
@@ -258,7 +253,7 @@ class DIGCA(DynamicGraphConstructionComputation):
             )
 
             # execute computation if order is bottom-up
-            self._execute_computations('bottom-up')
+            self.execute_computations('bottom-up')
 
             # report connection to graph UI
 
@@ -271,7 +266,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.logger.info(f'Assigned as parent of {msg.agent_id}')
 
         # execute computation (if topdown/async)
-        self._execute_computations('top-down')
+        self.execute_computations('top-down')
 
     def _phi(self, agt_id):
         return self.agent.name < agt_id
@@ -308,7 +303,7 @@ class DIGCA(DynamicGraphConstructionComputation):
 
         if affected:
             self.configure_computations()
-            self._execute_computations(is_reconfiguration=True)
+            self.execute_computations(is_reconfiguration=True)
         self.keep_alive_agents.clear()
 
     def _on_neighbor_removed(self, neighbor: Neighbor, *args, **kwargs):
