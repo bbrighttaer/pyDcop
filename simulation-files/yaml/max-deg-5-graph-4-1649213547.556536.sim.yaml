@@ -1,0 +1,1542 @@
+name: max-deg-5-graph-4-1649213547.556536.sim
+objective: min
+domains:
+  d1:
+    values:
+    - -26
+    - 48
+    - -19
+  d0:
+    values:
+    - 18
+    - 26
+    - 29
+  d3:
+    values:
+    - -35
+    - 26
+    - 31
+  d2:
+    values:
+    - -36
+    - -6
+    - -18
+  d4:
+    values:
+    - 18
+    - -25
+    - 42
+  d6:
+    values:
+    - 0
+    - -35
+    - 12
+  d5:
+    values:
+    - 30
+    - -33
+    - 13
+  d10:
+    values:
+    - 33
+    - 17
+    - 30
+  d9:
+    values:
+    - 42
+    - 33
+    - 28
+  d7:
+    values:
+    - -17
+    - -40
+    - 34
+  d11:
+    values:
+    - 7
+    - 25
+    - -28
+  d12:
+    values:
+    - 18
+    - 22
+    - -35
+  d13:
+    values:
+    - -41
+    - -45
+    - 17
+  d8:
+    values:
+    - -50
+    - -38
+    - 46
+  d15:
+    values:
+    - -8
+    - -47
+    - 20
+  d16:
+    values:
+    - -49
+    - 24
+    - 18
+  d14:
+    values:
+    - 35
+    - 19
+    - 26
+  d17:
+    values:
+    - -32
+    - 47
+    - -18
+  d18:
+    values:
+    - 32
+    - -21
+    - -42
+  d20:
+    values:
+    - 18
+    - -44
+    - 6
+  d24:
+    values:
+    - -47
+    - -40
+    - 41
+  d19:
+    values:
+    - -27
+    - 16
+    - 3
+  d22:
+    values:
+    - -41
+    - 15
+    - 29
+  d27:
+    values:
+    - -9
+    - 39
+    - -22
+  d25:
+    values:
+    - 42
+    - 37
+    - -26
+  d23:
+    values:
+    - 18
+    - -37
+    - 41
+  d26:
+    values:
+    - 36
+    - 16
+    - -37
+  d21:
+    values:
+    - 31
+    - -48
+    - 7
+  d28:
+    values:
+    - -33
+    - -43
+    - 26
+  d31:
+    values:
+    - 20
+    - 33
+    - 22
+  d32:
+    values:
+    - -21
+    - -30
+    - -43
+  d29:
+    values:
+    - 47
+    - -10
+    - 40
+  d36:
+    values:
+    - -13
+    - -28
+    - 13
+  d30:
+    values:
+    - -25
+    - -46
+    - 43
+  d35:
+    values:
+    - 49
+    - -22
+    - 42
+  d34:
+    values:
+    - 34
+    - -26
+    - -9
+  d37:
+    values:
+    - 2
+    - -3
+    - 9
+  d33:
+    values:
+    - 10
+    - -19
+    - 35
+  d38:
+    values:
+    - -31
+    - 1
+    - -5
+  d40:
+    values:
+    - 39
+    - 6
+    - 9
+  d39:
+    values:
+    - 16
+    - 48
+    - -17
+  d43:
+    values:
+    - -39
+    - -10
+    - -23
+  d44:
+    values:
+    - 38
+    - -44
+    - -12
+  d41:
+    values:
+    - 9
+    - 3
+    - 35
+  d45:
+    values:
+    - 21
+    - 41
+    - 45
+  d42:
+    values:
+    - 5
+    - 27
+    - -15
+  d51:
+    values:
+    - -3
+    - 10
+    - -20
+  d46:
+    values:
+    - -42
+    - -47
+    - 41
+  d49:
+    values:
+    - -44
+    - -37
+    - -46
+  d48:
+    values:
+    - -21
+    - -30
+    - 6
+  d47:
+    values:
+    - 2
+    - -10
+    - -48
+  d50:
+    values:
+    - -47
+    - -5
+    - -45
+  d53:
+    values:
+    - -10
+    - 29
+    - 9
+  d57:
+    values:
+    - -7
+    - 2
+    - 11
+  d52:
+    values:
+    - 41
+    - -19
+    - 23
+  d54:
+    values:
+    - 30
+    - -12
+    - 25
+  d56:
+    values:
+    - -6
+    - 32
+    - -37
+  d58:
+    values:
+    - -19
+    - 45
+    - -50
+  d61:
+    values:
+    - -41
+    - 31
+    - -30
+  d55:
+    values:
+    - -11
+    - -24
+    - 11
+  d60:
+    values:
+    - 1
+    - 24
+    - 14
+  d62:
+    values:
+    - 43
+    - 44
+    - -5
+  d59:
+    values:
+    - 33
+    - -50
+    - 48
+  d63:
+    values:
+    - -48
+    - -1
+    - 27
+  d64:
+    values:
+    - -27
+    - 39
+    - 20
+  d65:
+    values:
+    - 23
+    - -12
+    - -15
+  d68:
+    values:
+    - -48
+    - 28
+    - 12
+  d69:
+    values:
+    - 31
+    - 12
+    - -8
+  d67:
+    values:
+    - 38
+    - 28
+    - -7
+  d75:
+    values:
+    - -3
+    - 7
+    - 19
+  d72:
+    values:
+    - -45
+    - -47
+    - 5
+  d66:
+    values:
+    - 24
+    - 20
+    - -38
+  d70:
+    values:
+    - -43
+    - 25
+    - 14
+  d73:
+    values:
+    - 7
+    - -14
+    - -3
+  d71:
+    values:
+    - 14
+    - 48
+    - -32
+  d76:
+    values:
+    - 12
+    - 36
+    - 14
+  d77:
+    values:
+    - -5
+    - -34
+    - 37
+  d74:
+    values:
+    - 21
+    - -32
+    - -4
+  d83:
+    values:
+    - 16
+    - 18
+    - 43
+  d78:
+    values:
+    - -36
+    - 29
+    - 1
+  d80:
+    values:
+    - -33
+    - -43
+    - 2
+  d81:
+    values:
+    - 6
+    - -17
+    - -45
+  d79:
+    values:
+    - 8
+    - -15
+    - -4
+  d84:
+    values:
+    - -28
+    - -19
+    - -25
+  d85:
+    values:
+    - 14
+    - 5
+    - -7
+  d88:
+    values:
+    - -36
+    - 17
+    - -50
+  d82:
+    values:
+    - -39
+    - 29
+    - -40
+  d87:
+    values:
+    - -5
+    - -34
+    - 1
+  d86:
+    values:
+    - -9
+    - 32
+    - 30
+  d90:
+    values:
+    - 12
+    - 43
+    - -19
+  d91:
+    values:
+    - 11
+    - 25
+    - 15
+  d97:
+    values:
+    - -39
+    - 24
+    - -3
+  d94:
+    values:
+    - 49
+    - 6
+    - -1
+  d89:
+    values:
+    - 13
+    - -20
+    - 39
+  d96:
+    values:
+    - -23
+    - 7
+    - 11
+  d93:
+    values:
+    - -15
+    - -18
+    - -22
+  d98:
+    values:
+    - 25
+    - 7
+    - -49
+  d99:
+    values:
+    - 11
+    - -28
+    - 44
+  d95:
+    values:
+    - 34
+    - -8
+    - -20
+  d92:
+    values:
+    - 38
+    - 32
+    - 21
+variables:
+  var1:
+    domain: d1
+  var0:
+    domain: d0
+  var3:
+    domain: d3
+  var2:
+    domain: d2
+  var4:
+    domain: d4
+  var6:
+    domain: d6
+  var5:
+    domain: d5
+  var10:
+    domain: d10
+  var9:
+    domain: d9
+  var7:
+    domain: d7
+  var11:
+    domain: d11
+  var12:
+    domain: d12
+  var13:
+    domain: d13
+  var8:
+    domain: d8
+  var15:
+    domain: d15
+  var16:
+    domain: d16
+  var14:
+    domain: d14
+  var17:
+    domain: d17
+  var18:
+    domain: d18
+  var20:
+    domain: d20
+  var24:
+    domain: d24
+  var19:
+    domain: d19
+  var22:
+    domain: d22
+  var27:
+    domain: d27
+  var25:
+    domain: d25
+  var23:
+    domain: d23
+  var26:
+    domain: d26
+  var21:
+    domain: d21
+  var28:
+    domain: d28
+  var31:
+    domain: d31
+  var32:
+    domain: d32
+  var29:
+    domain: d29
+  var36:
+    domain: d36
+  var30:
+    domain: d30
+  var35:
+    domain: d35
+  var34:
+    domain: d34
+  var37:
+    domain: d37
+  var33:
+    domain: d33
+  var38:
+    domain: d38
+  var40:
+    domain: d40
+  var39:
+    domain: d39
+  var43:
+    domain: d43
+  var44:
+    domain: d44
+  var41:
+    domain: d41
+  var45:
+    domain: d45
+  var42:
+    domain: d42
+  var51:
+    domain: d51
+  var46:
+    domain: d46
+  var49:
+    domain: d49
+  var48:
+    domain: d48
+  var47:
+    domain: d47
+  var50:
+    domain: d50
+  var53:
+    domain: d53
+  var57:
+    domain: d57
+  var52:
+    domain: d52
+  var54:
+    domain: d54
+  var56:
+    domain: d56
+  var58:
+    domain: d58
+  var61:
+    domain: d61
+  var55:
+    domain: d55
+  var60:
+    domain: d60
+  var62:
+    domain: d62
+  var59:
+    domain: d59
+  var63:
+    domain: d63
+  var64:
+    domain: d64
+  var65:
+    domain: d65
+  var68:
+    domain: d68
+  var69:
+    domain: d69
+  var67:
+    domain: d67
+  var75:
+    domain: d75
+  var72:
+    domain: d72
+  var66:
+    domain: d66
+  var70:
+    domain: d70
+  var73:
+    domain: d73
+  var71:
+    domain: d71
+  var76:
+    domain: d76
+  var77:
+    domain: d77
+  var74:
+    domain: d74
+  var83:
+    domain: d83
+  var78:
+    domain: d78
+  var80:
+    domain: d80
+  var81:
+    domain: d81
+  var79:
+    domain: d79
+  var84:
+    domain: d84
+  var85:
+    domain: d85
+  var88:
+    domain: d88
+  var82:
+    domain: d82
+  var87:
+    domain: d87
+  var86:
+    domain: d86
+  var90:
+    domain: d90
+  var91:
+    domain: d91
+  var97:
+    domain: d97
+  var94:
+    domain: d94
+  var89:
+    domain: d89
+  var96:
+    domain: d96
+  var93:
+    domain: d93
+  var98:
+    domain: d98
+  var99:
+    domain: d99
+  var95:
+    domain: d95
+  var92:
+    domain: d92
+constraints:
+  c0:
+    type: intention
+    function: 1.421 * var1**2 + 3.642 * var1 * var2 + -2.735 * var2**2
+    differentials:
+      var1: 2 * 1.421 * var1 + 3.642 * var2
+      var2: 3.642 * var1 + 2 * -2.735 * var2
+  c1:
+    type: intention
+    function: 4.819 * var1**2 + -4.606 * var1 * var16 + 4.089 * var16**2
+    differentials:
+      var1: 2 * 4.819 * var1 + -4.606 * var16
+      var16: -4.606 * var1 + 2 * 4.089 * var16
+  c2:
+    type: intention
+    function: 0.61 * var1**2 + -1.492 * var1 * var51 + 1.604 * var51**2
+    differentials:
+      var1: 2 * 0.61 * var1 + -1.492 * var51
+      var51: -1.492 * var1 + 2 * 1.604 * var51
+  c3:
+    type: intention
+    function: 4.932 * var1**2 + 2.54 * var1 * var7 + -0.632 * var7**2
+    differentials:
+      var1: 2 * 4.932 * var1 + 2.54 * var7
+      var7: 2.54 * var1 + 2 * -0.632 * var7
+  c4:
+    type: intention
+    function: -1.801 * var0**2 + 3.323 * var0 * var1 + 3.102 * var1**2
+    differentials:
+      var0: 2 * -1.801 * var0 + 3.323 * var1
+      var1: 3.323 * var0 + 2 * 3.102 * var1
+  c5:
+    type: intention
+    function: -2.477 * var0**2 + -4.935 * var0 * var25 + 2.658 * var25**2
+    differentials:
+      var0: 2 * -2.477 * var0 + -4.935 * var25
+      var25: -4.935 * var0 + 2 * 2.658 * var25
+  c6:
+    type: intention
+    function: 1.204 * var0**2 + 4.205 * var0 * var3 + 2.704 * var3**2
+    differentials:
+      var0: 2 * 1.204 * var0 + 4.205 * var3
+      var3: 4.205 * var0 + 2 * 2.704 * var3
+  c7:
+    type: intention
+    function: 1.765 * var0**2 + -2.945 * var0 * var47 + 4.167 * var47**2
+    differentials:
+      var0: 2 * 1.765 * var0 + -2.945 * var47
+      var47: -2.945 * var0 + 2 * 4.167 * var47
+  c8:
+    type: intention
+    function: -0.063 * var0**2 + -1.844 * var0 * var14 + -4.616 * var14**2
+    differentials:
+      var0: 2 * -0.063 * var0 + -1.844 * var14
+      var14: -1.844 * var0 + 2 * -4.616 * var14
+  c9:
+    type: intention
+    function: -3.787 * var3**2 + -0.061 * var3 * var6 + -1.584 * var6**2
+    differentials:
+      var3: 2 * -3.787 * var3 + -0.061 * var6
+      var6: -0.061 * var3 + 2 * -1.584 * var6
+  c10:
+    type: intention
+    function: -1.825 * var2**2 + 1.928 * var2 * var10 + -2.284 * var10**2
+    differentials:
+      var2: 2 * -1.825 * var2 + 1.928 * var10
+      var10: 1.928 * var2 + 2 * -2.284 * var10
+  c11:
+    type: intention
+    function: 3.323 * var2**2 + -4.712 * var2 * var4 + 1.655 * var4**2
+    differentials:
+      var2: 2 * 3.323 * var2 + -4.712 * var4
+      var4: -4.712 * var2 + 2 * 1.655 * var4
+  c12:
+    type: intention
+    function: -1.812 * var4**2 + 4.519 * var4 * var5 + -1.223 * var5**2
+    differentials:
+      var4: 2 * -1.812 * var4 + 4.519 * var5
+      var5: 4.519 * var4 + 2 * -1.223 * var5
+  c13:
+    type: intention
+    function: 1.987 * var4**2 + 3.65 * var4 * var12 + -0.667 * var12**2
+    differentials:
+      var4: 2 * 1.987 * var4 + 3.65 * var12
+      var12: 3.65 * var4 + 2 * -0.667 * var12
+  c14:
+    type: intention
+    function: 4.201 * var6**2 + 4.021 * var6 * var93 + 0.311 * var93**2
+    differentials:
+      var6: 2 * 4.201 * var6 + 4.021 * var93
+      var93: 4.021 * var6 + 2 * 0.311 * var93
+  c15:
+    type: intention
+    function: 1.729 * var6**2 + 4.933 * var6 * var19 + 4.341 * var19**2
+    differentials:
+      var6: 2 * 1.729 * var6 + 4.933 * var19
+      var19: 4.933 * var6 + 2 * 4.341 * var19
+  c16:
+    type: intention
+    function: 3.296 * var6**2 + 2.661 * var6 * var8 + -4.114 * var8**2
+    differentials:
+      var6: 2 * 3.296 * var6 + 2.661 * var8
+      var8: 2.661 * var6 + 2 * -4.114 * var8
+  c17:
+    type: intention
+    function: 1.835 * var6**2 + -4.679 * var6 * var9 + 4.497 * var9**2
+    differentials:
+      var6: 2 * 1.835 * var6 + -4.679 * var9
+      var9: -4.679 * var6 + 2 * 4.497 * var9
+  c18:
+    type: intention
+    function: -0.931 * var6**2 + 3.082 * var6 * var17 + -0.814 * var17**2
+    differentials:
+      var6: 2 * -0.931 * var6 + 3.082 * var17
+      var17: 3.082 * var6 + 2 * -0.814 * var17
+  c19:
+    type: intention
+    function: 1.896 * var10**2 + 1.653 * var10 * var22 + -4.806 * var22**2
+    differentials:
+      var10: 2 * 1.896 * var10 + 1.653 * var22
+      var22: 1.653 * var10 + 2 * -4.806 * var22
+  c20:
+    type: intention
+    function: 4.183 * var10**2 + 1.159 * var10 * var11 + -3.666 * var11**2
+    differentials:
+      var10: 2 * 4.183 * var10 + 1.159 * var11
+      var11: 1.159 * var10 + 2 * -3.666 * var11
+  c21:
+    type: intention
+    function: -2.028 * var10**2 + 4.436 * var10 * var29 + 2.483 * var29**2
+    differentials:
+      var10: 2 * -2.028 * var10 + 4.436 * var29
+      var29: 4.436 * var10 + 2 * 2.483 * var29
+  c22:
+    type: intention
+    function: -2.416 * var9**2 + 3.858 * var9 * var13 + 3.986 * var13**2
+    differentials:
+      var9: 2 * -2.416 * var9 + 3.858 * var13
+      var13: 3.858 * var9 + 2 * 3.986 * var13
+  c23:
+    type: intention
+    function: -3.912 * var9**2 + 0.925 * var9 * var15 + -1.951 * var15**2
+    differentials:
+      var9: 2 * -3.912 * var9 + 0.925 * var15
+      var15: 0.925 * var9 + 2 * -1.951 * var15
+  c24:
+    type: intention
+    function: 4.656 * var9**2 + 1.711 * var9 * var35 + -3.622 * var35**2
+    differentials:
+      var9: 2 * 4.656 * var9 + 1.711 * var35
+      var35: 1.711 * var9 + 2 * -3.622 * var35
+  c25:
+    type: intention
+    function: 2.381 * var9**2 + -3.397 * var9 * var24 + -3.803 * var24**2
+    differentials:
+      var9: 2 * 2.381 * var9 + -3.397 * var24
+      var24: -3.397 * var9 + 2 * -3.803 * var24
+  c26:
+    type: intention
+    function: -1.12 * var7**2 + -1.076 * var7 * var23 + -3.471 * var23**2
+    differentials:
+      var7: 2 * -1.12 * var7 + -1.076 * var23
+      var23: -1.076 * var7 + 2 * -3.471 * var23
+  c27:
+    type: intention
+    function: 4.257 * var13**2 + -0.351 * var13 * var20 + -3.313 * var20**2
+    differentials:
+      var13: 2 * 4.257 * var13 + -0.351 * var20
+      var20: -0.351 * var13 + 2 * -3.313 * var20
+  c28:
+    type: intention
+    function: -2.209 * var13**2 + -4.935 * var13 * var26 + -2.844 * var26**2
+    differentials:
+      var13: 2 * -2.209 * var13 + -4.935 * var26
+      var26: -4.935 * var13 + 2 * -2.844 * var26
+  c29:
+    type: intention
+    function: -3.039 * var8**2 + 1.694 * var8 * var17 + -4.647 * var17**2
+    differentials:
+      var8: 2 * -3.039 * var8 + 1.694 * var17
+      var17: 1.694 * var8 + 2 * -4.647 * var17
+  c30:
+    type: intention
+    function: 1.433 * var8**2 + -3.875 * var8 * var74 + 2.274 * var74**2
+    differentials:
+      var8: 2 * 1.433 * var8 + -3.875 * var74
+      var74: -3.875 * var8 + 2 * 2.274 * var74
+  c31:
+    type: intention
+    function: 4.644 * var8**2 + 0.236 * var8 * var44 + -1.084 * var44**2
+    differentials:
+      var8: 2 * 4.644 * var8 + 0.236 * var44
+      var44: 0.236 * var8 + 2 * -1.084 * var44
+  c32:
+    type: intention
+    function: 0.904 * var8**2 + 1.678 * var8 * var24 + -3.264 * var24**2
+    differentials:
+      var8: 2 * 0.904 * var8 + 1.678 * var24
+      var24: 1.678 * var8 + 2 * -3.264 * var24
+  c33:
+    type: intention
+    function: -1.924 * var16**2 + -1.042 * var16 * var18 + 4.799 * var18**2
+    differentials:
+      var16: 2 * -1.924 * var16 + -1.042 * var18
+      var18: -1.042 * var16 + 2 * 4.799 * var18
+  c34:
+    type: intention
+    function: -2.762 * var16**2 + -2.397 * var16 * var85 + -1.664 * var85**2
+    differentials:
+      var16: 2 * -2.762 * var16 + -2.397 * var85
+      var85: -2.397 * var16 + 2 * -1.664 * var85
+  c35:
+    type: intention
+    function: 3.842 * var20**2 + -4.07 * var20 * var21 + -4.27 * var21**2
+    differentials:
+      var20: 2 * 3.842 * var20 + -4.07 * var21
+      var21: -4.07 * var20 + 2 * -4.27 * var21
+  c36:
+    type: intention
+    function: -3.194 * var24**2 + 4.378 * var24 * var77 + 4.756 * var77**2
+    differentials:
+      var24: 2 * -3.194 * var24 + 4.378 * var77
+      var77: 4.378 * var24 + 2 * 4.756 * var77
+  c37:
+    type: intention
+    function: -0.206 * var24**2 + 0.336 * var24 * var65 + 3.235 * var65**2
+    differentials:
+      var24: 2 * -0.206 * var24 + 0.336 * var65
+      var65: 0.336 * var24 + 2 * 3.235 * var65
+  c38:
+    type: intention
+    function: -2.79 * var24**2 + -4.134 * var24 * var30 + -3.467 * var30**2
+    differentials:
+      var24: 2 * -2.79 * var24 + -4.134 * var30
+      var30: -4.134 * var24 + 2 * -3.467 * var30
+  c39:
+    type: intention
+    function: -2.61 * var22**2 + -3.177 * var22 * var50 + 1.349 * var50**2
+    differentials:
+      var22: 2 * -2.61 * var22 + -3.177 * var50
+      var50: -3.177 * var22 + 2 * 1.349 * var50
+  c40:
+    type: intention
+    function: -3.918 * var27**2 + -1.406 * var27 * var58 + -3.486 * var58**2
+    differentials:
+      var27: 2 * -3.918 * var27 + -1.406 * var58
+      var58: -1.406 * var27 + 2 * -3.486 * var58
+  c41:
+    type: intention
+    function: -4.602 * var23**2 + -4.037 * var23 * var45 + 0.885 * var45**2
+    differentials:
+      var23: 2 * -4.602 * var23 + -4.037 * var45
+      var45: -4.037 * var23 + 2 * 0.885 * var45
+  c42:
+    type: intention
+    function: 4.526 * var26**2 + 3.739 * var26 * var28 + 4.021 * var28**2
+    differentials:
+      var26: 2 * 4.526 * var26 + 3.739 * var28
+      var28: 3.739 * var26 + 2 * 4.021 * var28
+  c43:
+    type: intention
+    function: 2.357 * var26**2 + -3.322 * var26 * var27 + -4.334 * var27**2
+    differentials:
+      var26: 2 * 2.357 * var26 + -3.322 * var27
+      var27: -3.322 * var26 + 2 * -4.334 * var27
+  c44:
+    type: intention
+    function: -4.631 * var28**2 + 0.564 * var28 * var74 + 0.086 * var74**2
+    differentials:
+      var28: 2 * -4.631 * var28 + 0.564 * var74
+      var74: 0.564 * var28 + 2 * 0.086 * var74
+  c45:
+    type: intention
+    function: -0.69 * var31**2 + -3.159 * var31 * var33 + -3.311 * var33**2
+    differentials:
+      var31: 2 * -0.69 * var31 + -3.159 * var33
+      var33: -3.159 * var31 + 2 * -3.311 * var33
+  c46:
+    type: intention
+    function: 4.555 * var29**2 + -1.842 * var29 * var34 + -1.944 * var34**2
+    differentials:
+      var29: 2 * 4.555 * var29 + -1.842 * var34
+      var34: -1.842 * var29 + 2 * -1.944 * var34
+  c47:
+    type: intention
+    function: -4.982 * var29**2 + 1.155 * var29 * var36 + -1.456 * var36**2
+    differentials:
+      var29: 2 * -4.982 * var29 + 1.155 * var36
+      var36: 1.155 * var29 + 2 * -1.456 * var36
+  c48:
+    type: intention
+    function: 1.708 * var29**2 + 0.347 * var29 * var52 + 1.049 * var52**2
+    differentials:
+      var29: 2 * 1.708 * var29 + 0.347 * var52
+      var52: 0.347 * var29 + 2 * 1.049 * var52
+  c49:
+    type: intention
+    function: 4.102 * var29**2 + 2.394 * var29 * var46 + 2.961 * var46**2
+    differentials:
+      var29: 2 * 4.102 * var29 + 2.394 * var46
+      var46: 2.394 * var29 + 2 * 2.961 * var46
+  c50:
+    type: intention
+    function: -4.623 * var30**2 + 4.877 * var30 * var31 + 1.1 * var31**2
+    differentials:
+      var30: 2 * -4.623 * var30 + 4.877 * var31
+      var31: 4.877 * var30 + 2 * 1.1 * var31
+  c51:
+    type: intention
+    function: -4.513 * var30**2 + -3.353 * var30 * var32 + 1.181 * var32**2
+    differentials:
+      var30: 2 * -4.513 * var30 + -3.353 * var32
+      var32: -3.353 * var30 + 2 * 1.181 * var32
+  c52:
+    type: intention
+    function: 3.291 * var30**2 + 3.888 * var30 * var88 + -2.377 * var88**2
+    differentials:
+      var30: 2 * 3.291 * var30 + 3.888 * var88
+      var88: 3.888 * var30 + 2 * -2.377 * var88
+  c53:
+    type: intention
+    function: 1.85 * var35**2 + -2.036 * var35 * var38 + 2.115 * var38**2
+    differentials:
+      var35: 2 * 1.85 * var35 + -2.036 * var38
+      var38: -2.036 * var35 + 2 * 2.115 * var38
+  c54:
+    type: intention
+    function: 2.048 * var34**2 + 0.498 * var34 * var87 + -0.814 * var87**2
+    differentials:
+      var34: 2 * 2.048 * var34 + 0.498 * var87
+      var87: 0.498 * var34 + 2 * -0.814 * var87
+  c55:
+    type: intention
+    function: -2.616 * var34**2 + 4.462 * var34 * var84 + -1.978 * var84**2
+    differentials:
+      var34: 2 * -2.616 * var34 + 4.462 * var84
+      var84: 4.462 * var34 + 2 * -1.978 * var84
+  c56:
+    type: intention
+    function: -2.827 * var37**2 + 0.556 * var37 * var57 + -0.233 * var57**2
+    differentials:
+      var37: 2 * -2.827 * var37 + 0.556 * var57
+      var57: 0.556 * var37 + 2 * -0.233 * var57
+  c57:
+    type: intention
+    function: -4.526 * var33**2 + -1.552 * var33 * var39 + 4.819 * var39**2
+    differentials:
+      var33: 2 * -4.526 * var33 + -1.552 * var39
+      var39: -1.552 * var33 + 2 * 4.819 * var39
+  c58:
+    type: intention
+    function: -0.534 * var33**2 + 4.452 * var33 * var37 + -0.392 * var37**2
+    differentials:
+      var33: 2 * -0.534 * var33 + 4.452 * var37
+      var37: 4.452 * var33 + 2 * -0.392 * var37
+  c59:
+    type: intention
+    function: 1.731 * var33**2 + 1.091 * var33 * var49 + 4.668 * var49**2
+    differentials:
+      var33: 2 * 1.731 * var33 + 1.091 * var49
+      var49: 1.091 * var33 + 2 * 4.668 * var49
+  c60:
+    type: intention
+    function: 0.805 * var38**2 + -1.671 * var38 * var41 + -0.578 * var41**2
+    differentials:
+      var38: 2 * 0.805 * var38 + -1.671 * var41
+      var41: -1.671 * var38 + 2 * -0.578 * var41
+  c61:
+    type: intention
+    function: -4.415 * var38**2 + -3.772 * var38 * var40 + 3.242 * var40**2
+    differentials:
+      var38: 2 * -4.415 * var38 + -3.772 * var40
+      var40: -3.772 * var38 + 2 * 3.242 * var40
+  c62:
+    type: intention
+    function: 0.071 * var40**2 + 1.736 * var40 * var43 + 2.272 * var43**2
+    differentials:
+      var40: 2 * 0.071 * var40 + 1.736 * var43
+      var43: 1.736 * var40 + 2 * 2.272 * var43
+  c63:
+    type: intention
+    function: 3.74 * var40**2 + 4.402 * var40 * var64 + -3.644 * var64**2
+    differentials:
+      var40: 2 * 3.74 * var40 + 4.402 * var64
+      var64: 4.402 * var40 + 2 * -3.644 * var64
+  c64:
+    type: intention
+    function: 3.504 * var40**2 + -0.192 * var40 * var81 + -3.455 * var81**2
+    differentials:
+      var40: 2 * 3.504 * var40 + -0.192 * var81
+      var81: -0.192 * var40 + 2 * -3.455 * var81
+  c65:
+    type: intention
+    function: -4.211 * var39**2 + -2.0 * var39 * var99 + -0.338 * var99**2
+    differentials:
+      var39: 2 * -4.211 * var39 + -2.0 * var99
+      var99: -2.0 * var39 + 2 * -0.338 * var99
+  c66:
+    type: intention
+    function: 2.084 * var43**2 + -2.925 * var43 * var83 + 2.83 * var83**2
+    differentials:
+      var43: 2 * 2.084 * var43 + -2.925 * var83
+      var83: -2.925 * var43 + 2 * 2.83 * var83
+  c67:
+    type: intention
+    function: 1.243 * var43**2 + -3.976 * var43 * var54 + -3.903 * var54**2
+    differentials:
+      var43: 2 * 1.243 * var43 + -3.976 * var54
+      var54: -3.976 * var43 + 2 * -3.903 * var54
+  c68:
+    type: intention
+    function: -0.083 * var41**2 + -2.536 * var41 * var42 + 0.526 * var42**2
+    differentials:
+      var41: 2 * -0.083 * var41 + -2.536 * var42
+      var42: -2.536 * var41 + 2 * 0.526 * var42
+  c69:
+    type: intention
+    function: -1.9 * var45**2 + -0.587 * var45 * var48 + 1.731 * var48**2
+    differentials:
+      var45: 2 * -1.9 * var45 + -0.587 * var48
+      var48: -0.587 * var45 + 2 * 1.731 * var48
+  c70:
+    type: intention
+    function: -1.466 * var45**2 + -3.915 * var45 * var61 + -0.604 * var61**2
+    differentials:
+      var45: 2 * -1.466 * var45 + -3.915 * var61
+      var61: -3.915 * var45 + 2 * -0.604 * var61
+  c71:
+    type: intention
+    function: -1.343 * var42**2 + -0.094 * var42 * var45 + -1.538 * var45**2
+    differentials:
+      var42: 2 * -1.343 * var42 + -0.094 * var45
+      var45: -0.094 * var42 + 2 * -1.538 * var45
+  c72:
+    type: intention
+    function: -0.469 * var51**2 + -4.691 * var51 * var53 + -3.889 * var53**2
+    differentials:
+      var51: 2 * -0.469 * var51 + -4.691 * var53
+      var53: -4.691 * var51 + 2 * -3.889 * var53
+  c73:
+    type: intention
+    function: 2.299 * var51**2 + 1.877 * var51 * var69 + -3.993 * var69**2
+    differentials:
+      var51: 2 * 2.299 * var51 + 1.877 * var69
+      var69: 1.877 * var51 + 2 * -3.993 * var69
+  c74:
+    type: intention
+    function: 4.956 * var51**2 + 4.694 * var51 * var56 + 1.258 * var56**2
+    differentials:
+      var51: 2 * 4.956 * var51 + 4.694 * var56
+      var56: 4.694 * var51 + 2 * 1.258 * var56
+  c75:
+    type: intention
+    function: 1.277 * var51**2 + -1.73 * var51 * var87 + 4.859 * var87**2
+    differentials:
+      var51: 2 * 1.277 * var51 + -1.73 * var87
+      var87: -1.73 * var51 + 2 * 4.859 * var87
+  c76:
+    type: intention
+    function: -1.297 * var46**2 + -2.779 * var46 * var71 + 3.606 * var71**2
+    differentials:
+      var46: 2 * -1.297 * var46 + -2.779 * var71
+      var71: -2.779 * var46 + 2 * 3.606 * var71
+  c77:
+    type: intention
+    function: 4.124 * var48**2 + -0.699 * var48 * var50 + 3.808 * var50**2
+    differentials:
+      var48: 2 * 4.124 * var48 + -0.699 * var50
+      var50: -0.699 * var48 + 2 * 3.808 * var50
+  c78:
+    type: intention
+    function: -2.459 * var53**2 + -3.819 * var53 * var95 + -0.573 * var95**2
+    differentials:
+      var53: 2 * -2.459 * var53 + -3.819 * var95
+      var95: -3.819 * var53 + 2 * -0.573 * var95
+  c79:
+    type: intention
+    function: 0.485 * var53**2 + -1.111 * var53 * var59 + 0.824 * var59**2
+    differentials:
+      var53: 2 * 0.485 * var53 + -1.111 * var59
+      var59: -1.111 * var53 + 2 * 0.824 * var59
+  c80:
+    type: intention
+    function: -2.735 * var52**2 + -3.258 * var52 * var62 + -1.436 * var62**2
+    differentials:
+      var52: 2 * -2.735 * var52 + -3.258 * var62
+      var62: -3.258 * var52 + 2 * -1.436 * var62
+  c81:
+    type: intention
+    function: 1.694 * var54**2 + 3.322 * var54 * var55 + 4.686 * var55**2
+    differentials:
+      var54: 2 * 1.694 * var54 + 3.322 * var55
+      var55: 3.322 * var54 + 2 * 4.686 * var55
+  c82:
+    type: intention
+    function: 0.424 * var54**2 + 4.227 * var54 * var73 + 0.947 * var73**2
+    differentials:
+      var54: 2 * 0.424 * var54 + 4.227 * var73
+      var73: 4.227 * var54 + 2 * 0.947 * var73
+  c83:
+    type: intention
+    function: 0.491 * var56**2 + 3.551 * var56 * var67 + 1.348 * var67**2
+    differentials:
+      var56: 2 * 0.491 * var56 + 3.551 * var67
+      var67: 3.551 * var56 + 2 * 1.348 * var67
+  c84:
+    type: intention
+    function: -1.004 * var61**2 + 0.445 * var61 * var70 + -3.777 * var70**2
+    differentials:
+      var61: 2 * -1.004 * var61 + 0.445 * var70
+      var70: 0.445 * var61 + 2 * -3.777 * var70
+  c85:
+    type: intention
+    function: 2.135 * var55**2 + -2.569 * var55 * var60 + -0.346 * var60**2
+    differentials:
+      var55: 2 * 2.135 * var55 + -2.569 * var60
+      var60: -2.569 * var55 + 2 * -0.346 * var60
+  c86:
+    type: intention
+    function: -1.306 * var62**2 + -2.438 * var62 * var63 + -2.04 * var63**2
+    differentials:
+      var62: 2 * -1.306 * var62 + -2.438 * var63
+      var63: -2.438 * var62 + 2 * -2.04 * var63
+  c87:
+    type: intention
+    function: 1.239 * var59**2 + 1.76 * var59 * var68 + -3.24 * var68**2
+    differentials:
+      var59: 2 * 1.239 * var59 + 1.76 * var68
+      var68: 1.76 * var59 + 2 * -3.24 * var68
+  c88:
+    type: intention
+    function: -2.217 * var64**2 + 4.158 * var64 * var66 + -2.144 * var66**2
+    differentials:
+      var64: 2 * -2.217 * var64 + 4.158 * var66
+      var66: 4.158 * var64 + 2 * -2.144 * var66
+  c89:
+    type: intention
+    function: -1.719 * var69**2 + -2.672 * var69 * var90 + 1.149 * var90**2
+    differentials:
+      var69: 2 * -1.719 * var69 + -2.672 * var90
+      var90: -2.672 * var69 + 2 * 1.149 * var90
+  c90:
+    type: intention
+    function: 2.003 * var69**2 + 4.627 * var69 * var94 + 2.439 * var94**2
+    differentials:
+      var69: 2 * 2.003 * var69 + 4.627 * var94
+      var94: 4.627 * var69 + 2 * 2.439 * var94
+  c91:
+    type: intention
+    function: 2.947 * var75**2 + 2.437 * var75 * var82 + 3.06 * var82**2
+    differentials:
+      var75: 2 * 2.947 * var75 + 2.437 * var82
+      var82: 2.437 * var75 + 2 * 3.06 * var82
+  c92:
+    type: intention
+    function: 1.209 * var75**2 + 0.773 * var75 * var79 + -2.324 * var79**2
+    differentials:
+      var75: 2 * 1.209 * var75 + 0.773 * var79
+      var79: 0.773 * var75 + 2 * -2.324 * var79
+  c93:
+    type: intention
+    function: -0.899 * var72**2 + -0.152 * var72 * var78 + 1.363 * var78**2
+    differentials:
+      var72: 2 * -0.899 * var72 + -0.152 * var78
+      var78: -0.152 * var72 + 2 * 1.363 * var78
+  c94:
+    type: intention
+    function: -4.543 * var70**2 + -1.506 * var70 * var72 + 3.101 * var72**2
+    differentials:
+      var70: 2 * -4.543 * var70 + -1.506 * var72
+      var72: -1.506 * var70 + 2 * 3.101 * var72
+  c95:
+    type: intention
+    function: 4.201 * var70**2 + -3.81 * var70 * var84 + 1.775 * var84**2
+    differentials:
+      var70: 2 * 4.201 * var70 + -3.81 * var84
+      var84: -3.81 * var70 + 2 * 1.775 * var84
+  c96:
+    type: intention
+    function: -4.439 * var73**2 + -1.13 * var73 * var76 + -2.046 * var76**2
+    differentials:
+      var73: 2 * -4.439 * var73 + -1.13 * var76
+      var76: -1.13 * var73 + 2 * -2.046 * var76
+  c97:
+    type: intention
+    function: -1.315 * var71**2 + 3.469 * var71 * var86 + 2.37 * var86**2
+    differentials:
+      var71: 2 * -1.315 * var71 + 3.469 * var86
+      var86: 3.469 * var71 + 2 * 2.37 * var86
+  c98:
+    type: intention
+    function: 3.339 * var71**2 + -2.36 * var71 * var96 + -4.193 * var96**2
+    differentials:
+      var71: 2 * 3.339 * var71 + -2.36 * var96
+      var96: -2.36 * var71 + 2 * -4.193 * var96
+  c99:
+    type: intention
+    function: 2.807 * var71**2 + -1.454 * var71 * var75 + -4.25 * var75**2
+    differentials:
+      var71: 2 * 2.807 * var71 + -1.454 * var75
+      var75: -1.454 * var71 + 2 * -4.25 * var75
+  c100:
+    type: intention
+    function: 3.675 * var78**2 + 3.129 * var78 * var89 + -4.824 * var89**2
+    differentials:
+      var78: 2 * 3.675 * var78 + 3.129 * var89
+      var89: 3.129 * var78 + 2 * -4.824 * var89
+  c101:
+    type: intention
+    function: -0.637 * var78**2 + 2.353 * var78 * var80 + -2.361 * var80**2
+    differentials:
+      var78: 2 * -0.637 * var78 + 2.353 * var80
+      var80: 2.353 * var78 + 2 * -2.361 * var80
+  c102:
+    type: intention
+    function: -3.974 * var79**2 + -4.128 * var79 * var91 + 4.871 * var91**2
+    differentials:
+      var79: 2 * -3.974 * var79 + -4.128 * var91
+      var91: -4.128 * var79 + 2 * 4.871 * var91
+  c103:
+    type: intention
+    function: 2.44 * var89**2 + 1.621 * var89 * var92 + -4.163 * var92**2
+    differentials:
+      var89: 2 * 2.44 * var89 + 1.621 * var92
+      var92: 1.621 * var89 + 2 * -4.163 * var92
+  c104:
+    type: intention
+    function: -0.449 * var96**2 + 3.815 * var96 * var98 + -4.786 * var98**2
+    differentials:
+      var96: 2 * -0.449 * var96 + 3.815 * var98
+      var98: 3.815 * var96 + 2 * -4.786 * var98
+  c105:
+    type: intention
+    function: -1.523 * var96**2 + -1.872 * var96 * var97 + -1.936 * var97**2
+    differentials:
+      var96: 2 * -1.523 * var96 + -1.872 * var97
+      var97: -1.872 * var96 + 2 * -1.936 * var97
+agents:
+  a1:
+    id: '1'
+  a0:
+    id: '0'
+  a3:
+    id: '3'
+  a2:
+    id: '2'
+  a4:
+    id: '4'
+  a6:
+    id: '6'
+  a5:
+    id: '5'
+  a10:
+    id: '10'
+  a9:
+    id: '9'
+  a7:
+    id: '7'
+  a11:
+    id: '11'
+  a12:
+    id: '12'
+  a13:
+    id: '13'
+  a8:
+    id: '8'
+  a15:
+    id: '15'
+  a16:
+    id: '16'
+  a14:
+    id: '14'
+  a17:
+    id: '17'
+  a18:
+    id: '18'
+  a20:
+    id: '20'
+  a24:
+    id: '24'
+  a19:
+    id: '19'
+  a22:
+    id: '22'
+  a27:
+    id: '27'
+  a25:
+    id: '25'
+  a23:
+    id: '23'
+  a26:
+    id: '26'
+  a21:
+    id: '21'
+  a28:
+    id: '28'
+  a31:
+    id: '31'
+  a32:
+    id: '32'
+  a29:
+    id: '29'
+  a36:
+    id: '36'
+  a30:
+    id: '30'
+  a35:
+    id: '35'
+  a34:
+    id: '34'
+  a37:
+    id: '37'
+  a33:
+    id: '33'
+  a38:
+    id: '38'
+  a40:
+    id: '40'
+  a39:
+    id: '39'
+  a43:
+    id: '43'
+  a44:
+    id: '44'
+  a41:
+    id: '41'
+  a45:
+    id: '45'
+  a42:
+    id: '42'
+  a51:
+    id: '51'
+  a46:
+    id: '46'
+  a49:
+    id: '49'
+  a48:
+    id: '48'
+  a47:
+    id: '47'
+  a50:
+    id: '50'
+  a53:
+    id: '53'
+  a57:
+    id: '57'
+  a52:
+    id: '52'
+  a54:
+    id: '54'
+  a56:
+    id: '56'
+  a58:
+    id: '58'
+  a61:
+    id: '61'
+  a55:
+    id: '55'
+  a60:
+    id: '60'
+  a62:
+    id: '62'
+  a59:
+    id: '59'
+  a63:
+    id: '63'
+  a64:
+    id: '64'
+  a65:
+    id: '65'
+  a68:
+    id: '68'
+  a69:
+    id: '69'
+  a67:
+    id: '67'
+  a75:
+    id: '75'
+  a72:
+    id: '72'
+  a66:
+    id: '66'
+  a70:
+    id: '70'
+  a73:
+    id: '73'
+  a71:
+    id: '71'
+  a76:
+    id: '76'
+  a77:
+    id: '77'
+  a74:
+    id: '74'
+  a83:
+    id: '83'
+  a78:
+    id: '78'
+  a80:
+    id: '80'
+  a81:
+    id: '81'
+  a79:
+    id: '79'
+  a84:
+    id: '84'
+  a85:
+    id: '85'
+  a88:
+    id: '88'
+  a82:
+    id: '82'
+  a87:
+    id: '87'
+  a86:
+    id: '86'
+  a90:
+    id: '90'
+  a91:
+    id: '91'
+  a97:
+    id: '97'
+  a94:
+    id: '94'
+  a89:
+    id: '89'
+  a96:
+    id: '96'
+  a93:
+    id: '93'
+  a98:
+    id: '98'
+  a99:
+    id: '99'
+  a95:
+    id: '95'
+  a92:
+    id: '92'
