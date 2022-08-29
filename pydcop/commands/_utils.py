@@ -130,6 +130,7 @@ columns = {
         "msg_count",
         "msg_size",
         "status",
+        "edit_distance",
     ],
     "period": ["time", "cycle", "cost", "violation", "msg_count", "msg_size", "status"],
 }

@@ -11,8 +11,11 @@ from pydcop.computations_graph.dynamic_graph import DynamicComputationNode
 from pydcop.computations_graph.pseudotree import PseudoTreeLink
 from pydcop.dcop.relations import Constraint
 from pydcop.infrastructure.agents import DynamicAgent
+from pydcop.infrastructure.communication import MSG_MGT
 from pydcop.infrastructure.computations import MessagePassingComputation, Message
 from pydcop.infrastructure.discovery import Discovery
+from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_MGT
+from pydcop.infrastructure.orchestrator import GraphConnectionMessage
 from pydcop.stabilization import Neighbor
 
 
@@ -173,6 +176,17 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
                                 target=n_comp,
                             )
                         )
+
+                    # report connection
+                    self.post_msg(
+                        ORCHESTRATOR_MGT,
+                        GraphConnectionMessage(
+                            action='add',
+                            node1=dynamic_node.variable.name,
+                            node2=n_comp,
+                        ),
+                        MSG_MGT
+                    )
 
         # set node properties for dcop computation
         dynamic_node.constraints = constraints
