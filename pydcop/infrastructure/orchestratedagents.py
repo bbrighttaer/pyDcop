@@ -60,7 +60,7 @@ from pydcop.infrastructure.orchestrator import (
     RepairDoneMessage,
     ResumeMessage,
     AgentRemovedMessage,
-    SetMetricsModeMessage,
+    SetMetricsModeMessage, RequestAgentMetrics,
 )
 
 ORCHESTRATOR = "orchestrator"
@@ -272,6 +272,7 @@ class OrchestrationComputation(MessagePassingComputation):
             "stop": self._on_stop_request,
             # When requested to leave, simply stop
             "agent_removed": self._on_stop_request,
+            "request_metrics": self._on_metrics_requested,
         }
 
     @property
@@ -389,6 +390,9 @@ class OrchestrationComputation(MessagePassingComputation):
             self.agent.name, computation, value, cost, cycle, metrics
         )
         self.post_msg(ORCHESTRATOR_MGT, value_msg, MSG_MGT)
+
+    def _on_metrics_requested(self, sender: str, msg: RequestAgentMetrics, t: float):
+        self.send_metrics()
 
     def on_computation_new_cycle(self, computation, *args, **kwargs):
         cycle_count, = args

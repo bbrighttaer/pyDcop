@@ -738,7 +738,7 @@ class Agent(object):
                              if k in own_computations},
             # 'last_msg_time': self._messaging.last_msg_time,
             'activity_ratio': activity_ratio,
-            'cycles': {c.name: c.cycle_count for c in self.computations()}
+            'cycles': {c.name: c.cycle_count for c in self.computations()},
         }
         return m
 

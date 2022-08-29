@@ -69,7 +69,7 @@ def set_parser(subparsers):
     parser.add_argument(
         "-c",
         "--collect_on",
-        choices=["value_change", "cycle_change", "period"],
+        choices=["value_change", "cycle_change", "period", "scenario_event"],
         default="value_change",
         help='When should a "new" assignment be observed',
     )

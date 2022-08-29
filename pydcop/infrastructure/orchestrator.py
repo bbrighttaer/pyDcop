@@ -36,6 +36,7 @@ from typing import Dict, Tuple, Callable
 from typing import List
 from typing import Optional, Any
 
+import networkx as nx
 import yaml
 
 from pydcop.algorithms import AlgorithmDef, ComputationDef
@@ -360,6 +361,9 @@ class Orchestrator(object):
 
         try:
             evt = next(self._events_iterator)
+            if self._current_cycle > 1:
+                self._emit_metrics(perf_counter())
+                self._current_cycle += 1
         except StopIteration:
             self.logger.info("All events processed for scenario")
             self._scenario_complete_event.set()
@@ -415,6 +419,10 @@ class DynamicOrchestrator(Orchestrator):
                                     self._own_agt, self, infinity, collector=collector,
                                     collect_moment=collect_moment,
                                     collect_period=collect_period)
+
+        # monitor the generated graph over time
+        self.previous_graph = None
+        self.current_graph = None
 
         self._sim_end_t = threading.Thread(target=self._end_dynamic_simulation, name='sim_end_monitor', daemon=True)
 
@@ -503,6 +511,16 @@ ComputationFinishedMessage = message_type(
 # A AgentRemovedMessage is sent to an agent to inform it that it has been
 # removed from the system and must stop all operations.
 AgentRemovedMessage = message_type('agent_removed', [])
+
+# A GraphConnectionMessage is sent by an agent to the orchestrator when
+# the agent connects to another agent, or it is disconnected from another agent.
+# Possible values of `action` are `add`, `remove`, and `remove_node`
+GraphConnectionMessage = message_type(
+    'graph_connection',
+    ['node1', 'node2', 'action']
+)
+
+RequestAgentMetrics = message_type('request_metrics', [])
 
 RepairDoneMessage = message_type('repair_done',
                                  ['agent', 'selected_computations', 'metrics'])
@@ -1314,7 +1332,7 @@ class AgentsMgt(MessagePassingComputation):
             cost, violation = None, None
 
         # msg stats and activity ratio
-        msg_count, msg_size = 0, 0
+        msg_count, msg_size, edit_distance = 0, 0, 0
         agt_cycles = []
         for agt in self._agt_cycle_metrics[self._current_cycle]:
             agt_metrics = self._agt_cycle_metrics[self._current_cycle][agt]
@@ -1342,6 +1360,7 @@ class AgentsMgt(MessagePassingComputation):
             'msg_count': msg_count,
             'msg_size': msg_size,
             'cycle': max_cycle,
+            'edit_distance': edit_distance,
             'agt_metrics': self._agt_cycle_metrics[self._current_cycle]
         }
 
@@ -1367,13 +1386,23 @@ class DynamicAgentsMgt(AgentsMgt):
             'metrics': self._on_metrics_msg,
             'end_of_computation': self._on_computation_end_msg,
             'stopped': self._on_agent_stopped_msg,
+            'graph_connection': self._on_graph_connection_msg,
         }
+
+    def _create_graph(self):
+        if self._algo_module.GRAPH_TYPE == 'pseudotree':
+            return nx.DiGraph()
+        else:
+            return nx.Graph()
 
     def _orchestrator_scenario_event(self, msg: Message, _: float):
         """
         Handler for dynamic environment events from the dynamic orchestrator.
         """
         self.logger.debug('Scenario event from : %s', msg)
+
+        self._orchestrator.previous_graph = self._orchestrator.current_graph
+        self._orchestrator.current_graph = self._create_graph()
 
         evt = msg.content
         leaving_agents = []
@@ -1395,6 +1424,12 @@ class DynamicAgentsMgt(AgentsMgt):
             else:
                 self.logger.error('Unknown event action %s ', a)
                 raise ValueError(f'Unknown event action ' + str(a))
+
+    def _collect_scenario_metrics(self):
+        if self._collect_moment == 'scenario_event':
+            self._on_scenario_event_metrics()
+            time.sleep(.3)
+            self._emit_metrics(self.time_for_metrics)
 
     def _add_agent(self, agent_name):
         """
@@ -1448,4 +1483,53 @@ class DynamicAgentsMgt(AgentsMgt):
 
         self._computation_status[msg.computation] = 'finished'
         self.logger.debug(' status %s', self._computation_status.items())
+
+    def _on_scenario_event_metrics(self):
+        for agent in self.discovery.agents():
+            self.post_msg(
+                target=f'_mgt_{agent}',
+                msg=RequestAgentMetrics(),
+                prio=MSG_MGT,
+            )
+
+    def _on_graph_connection_msg(self, sender: str, msg: GraphConnectionMessage, _: float):
+        if msg.action == 'add':
+            self._orchestrator.current_graph.add_edge(msg.node1, msg.node2)
+        elif msg.action == 'remove':
+            self._orchestrator.current_graph.remove_edge(msg.node1, msg.node2)
+        elif msg.action == 'remove_node':
+            self._orchestrator.current_graph.remove_node(msg.node1)
+        else:
+            self.logger.info(f'Unknown graph operation')
+
+    def global_metrics(self, current_status, t):
+        metrics = super(DynamicAgentsMgt, self).global_metrics(current_status, t)
+        # add edit distance prop for the dynamic graph case
+        previous_graph = self._orchestrator.previous_graph
+        current_graph = self._orchestrator.current_graph
+
+        edit_distance = 0
+        if previous_graph and current_graph:
+            edit_distance = nx.graph_edit_distance(previous_graph, current_graph)
+        metrics['edit_distance'] = edit_distance
+
+        return metrics
+
+    def _on_value_change_msg(self, sender: str, msg: ValueChangeMessage,
+                             t: float):
+        """
+        Called every time a computation hosted by one of the orchestrated
+        agents selects a value.
+
+        If the collection mode is 'value_change', the message also contains the
+        metrics.
+        """
+        self.logger.debug('Receiving value change from %s : %s - %s (%s)',
+                          msg.computation, msg.value, msg.cost, sender)
+        self.logger.debug(f'Receiving current cycle: {self._current_cycle}')
+
+        self._agent_cycle_values[self._current_cycle][msg.computation] = (msg.value, msg.cost)
+        self._agt_cycle_metrics[self._current_cycle][msg.agent] = msg.metrics
+
+
 
