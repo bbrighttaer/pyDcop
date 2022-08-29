@@ -1,9 +1,11 @@
 import logging
 import threading
+import time
 from threading import Event
 from typing import List, Iterable, Callable, Union
 
 from pydcop.algorithms import ComputationDef
+from pydcop.computations_graph import constraints_hypergraph, pseudotree
 from pydcop.computations_graph.constraints_hypergraph import ConstraintLink
 from pydcop.computations_graph.dynamic_graph import DynamicComputationNode
 from pydcop.computations_graph.pseudotree import PseudoTreeLink
@@ -78,7 +80,6 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         self.logger.debug(f'Adding computation: {str(comp)}')
         self._dcop_comps.append(comp)
         setattr(comp, 'sync_lock', self.agent.sync_lock)
-        comp.pause(True)
         self.agent.run(comp.name)
 
         if self._on_computation_added_cb:
@@ -158,11 +159,11 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
                 if n_comp in constraint.scope_names:
                     constraints.append(constraint)
 
-                    if dynamic_node.type == 'VariableComputationNode':
+                    if dynamic_node.type == constraints_hypergraph.GRAPH_NODE_TYPE:
                         links.append(
                             ConstraintLink(name=constraint.name, nodes=[v.name for v in constraint.dimensions])
                         )
-                    elif dynamic_node.type == 'PseudoTreeComputation':
+                    elif dynamic_node.type == pseudotree.GRAPH_NODE_TYPE:
                         link_type = 'parent' if self.parent and self.parent.agent_id == \
                                                 self.discovery.computation_agent(n_comp) else 'children'
                         links.append(
@@ -185,7 +186,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
                     algo_exec_order = computation.computation_def.algo.params.get('execution_order', None)
                     if algo_exec_order is None or algo_exec_order == exec_order or is_reconfiguration:
                         self.logger.debug(f'Executing dcop, neighbors {computation.computation_def.node.neighbors}')
-                        computation.pause(False)
+                        time.sleep(.3)
                         computation.start()
         else:
             self.logger.debug('No neighbors available for computation')

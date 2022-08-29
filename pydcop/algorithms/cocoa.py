@@ -4,7 +4,7 @@ import random
 
 import numpy as np
 
-from pydcop.algorithms import ComputationDef
+from pydcop.algorithms import ComputationDef, AlgoParameterDef
 from pydcop.dcop.relations import Constraint
 from pydcop.infrastructure.computations import VariableComputation, Message, register
 
@@ -14,6 +14,9 @@ MSG_PRIORITY = 1
 HOLD = "hold"
 DONE = "done"
 IDLE = "idle"
+algo_params = [
+    AlgoParameterDef("execution_order", "str", ["top-down", "bottom-up"], "bottom-up"),
+]
 
 
 def build_computation(comp_def: ComputationDef):
@@ -307,16 +310,33 @@ class CoCoA(VariableComputation):
         Randomly select a neighbor to trigger execution
         """
         self.logger.debug("Selecting neighbor to start")
-        available_neighbors = set(self.neighbors) - set(self.done_state_history)
-        if available_neighbors:
-            selected_neighbor = random.choice(list(available_neighbors))
-            self.logger.debug(f"Neighbor {selected_neighbor} selected to start")
-            self.post_msg(selected_neighbor, CoCoAMessage(CoCoAMessage.START_DCOP_MESSAGE, None), on_error="fail")
+        # available_neighbors = set(self.neighbors) - set(self.done_state_history)
+        neighbors = []
+        for link in self.computation_def.node.links:
+            if link.type == "parent" and self.computation_def.algo.param_value("execution_order") == "bottom-up":
+                neighbors.append(link.target)
+            elif link.type == "children" and self.computation_def.algo.param_value("execution_order") == "top-down":
+                neighbors.append(link.target)
+            else:
+                neighbors.append(link.target)
+
+        if neighbors:
+            available_neighbors = set(self.neighbors) - set(self.done_state_history)
+            for neighbor in available_neighbors:
+                self.logger.debug(f"Neighbor {neighbor} selected to start")
+                self.post_msg(neighbor, CoCoAMessage(CoCoAMessage.START_DCOP_MESSAGE, None), on_error="fail")
         else:
             self.logger.debug(f"No neighbor is available to start, done history: {self.done_state_history}")
             self.finished()
             if self.computation_def.exec_mode != 'dynamic':
                 self.stop()
 
+    def finished(self):
+        self.done_state_history.clear()
+        self.cost_msgs.clear()
+        self.status = IDLE
+        self.hold_state_history.clear()
+
+        super(CoCoA, self).finished()
 
 

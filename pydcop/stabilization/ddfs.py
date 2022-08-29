@@ -21,6 +21,16 @@ MaxDegreeResponse = message_type(
     fields=['agent_id', 'max_degree'],
 )
 
+Affected = message_type(
+    'affected',
+    fields=['agent_id'],
+)
+
+Configure = message_type(
+    'configure',
+    fields=['agent_id'],
+)
+
 
 def build_stabilization_computation(agent: DynamicAgent, discovery: Discovery) -> MessagePassingComputation:
     """
@@ -52,6 +62,8 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         self._msg_handlers = {
             'max_degree_request': self._on_max_degree_request,
             'max_degree_response': self._on_max_degree_response,
+            # 'configure': self._on_configure,
+            # 'affected': self._on_affected,
         }
 
         self._on_computation_added_cb = self._subscribe_to_neighbor_computations
@@ -183,5 +195,40 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         if configured:
             self.execute_computations(is_reconfiguration=True)
 
-
-
+    #    # reconfigure properties for dcop computation
+    #     configured = False
+    #     for computation in self.computations:
+    #         self._configure(computation)
+    #         configured = True
+    #     if configured:
+    #         self._pass_graph_changed_msg()
+    #
+    # def _pass_graph_changed_msg(self):
+    #     if self.parent:
+    #         self.logger.debug(f'Sending affected msg to parent {self.parent.agent_id}')
+    #         self.post_msg(
+    #             target=f'{NAME}-{self.parent.agent_id}',
+    #             msg=Affected(
+    #                 agent_id=self.agent,
+    #             )
+    #         )
+    #     elif self.children:
+    #         for child in self.children:
+    #             self.logger.debug(f'Sending configure msg to child {child.agent_id}')
+    #             self.post_msg(
+    #                 target=f'{NAME}-{child.agent_id}',
+    #                 msg=Configure(
+    #                     agent_id=self.agent.name,
+    #                 )
+    #             )
+    #
+    # def _on_affected(self, sender: str, msg: Affected):
+    #     self.logger.debug(f'Received affected msg from {sender}')
+    #     self._pass_graph_changed_msg()
+    #
+    #
+    # def _on_configure(self, sender: str, msg: Configure):
+    #     self.logger.debug(f'Received configure msg from {sender}')
+    #
+    #
+    #

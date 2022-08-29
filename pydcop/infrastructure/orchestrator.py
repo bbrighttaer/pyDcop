@@ -142,6 +142,8 @@ class Orchestrator(object):
         self._events_iterator = None
         self._event_timer = None  # type: threading.Timer
         self._timeout_timer = None
+        # monitor when scenario running ends
+        self._scenario_complete_event = threading.Event()
 
         self._stopping = threading.Event()
 
@@ -281,16 +283,19 @@ class Orchestrator(object):
         else:
             self.logger.info('Not timeout, stop with ctrl+c or on algo end ')
 
+        self.process_scenarios(scenario)
+
+        self.mgt.wait_stop_agents()
+        self._own_agt.clean_shutdown()
+        self._own_agt.join()
+
+    def process_scenarios(self, scenario):
         if scenario is not None:
             self.logger.info('Setting scenario ')
             self._events_iterator = iter(scenario)
             self._process_event()
         else:
             self.logger.info('No scenario ')
-
-        self.mgt.wait_stop_agents()
-        self._own_agt.clean_shutdown()
-        self._own_agt.join()
 
     def stop_agents(self, timeout: float):
         self.logger.info('Requesting all agents to stop')
@@ -357,6 +362,7 @@ class Orchestrator(object):
             evt = next(self._events_iterator)
         except StopIteration:
             self.logger.info("All events processed for scenario")
+            self._scenario_complete_event.set()
             self._events_iterator = None
             return
 
@@ -382,6 +388,10 @@ class Orchestrator(object):
         self.stop_agents(5)
         self.mgt.ready_to_run.set()
 
+    @property
+    def scenario_complete_event(self):
+        return self._scenario_complete_event
+
 
 class DynamicOrchestrator(Orchestrator):
 
@@ -406,6 +416,8 @@ class DynamicOrchestrator(Orchestrator):
                                     collect_moment=collect_moment,
                                     collect_period=collect_period)
 
+        self._sim_end_t = threading.Thread(target=self._end_dynamic_simulation, name='sim_end_monitor', daemon=True)
+
     def start(self):
         super(DynamicOrchestrator, self).start()
 
@@ -414,6 +426,8 @@ class DynamicOrchestrator(Orchestrator):
 
     def run(self, scenario: Scenario = None, timeout: Optional[float] = None, **kwargs):
         self.logger.info(f"Running Dynamic Orchestrator")
+
+        self._sim_end_t.start()
 
         if timeout is not None:
             self.logger.info('Setting timer for %s timeout', timeout)
@@ -424,16 +438,16 @@ class DynamicOrchestrator(Orchestrator):
         else:
             self.logger.info('Not timeout, stop with ctrl+c or on algo end ')
 
-        if scenario is not None:
-            self.logger.info('Setting scenario ')
-            self._events_iterator = iter(scenario)
-            self._process_event()
-        else:
-            self.logger.info('No scenario ')
+        self.process_scenarios(scenario)
 
         self.mgt.wait_stop_agents()
         self._own_agt.clean_shutdown()
         self._own_agt.join()
+
+    def _end_dynamic_simulation(self):
+        self.scenario_complete_event.wait()
+        self.logger.info('All Dynamic DCOP computation have finished : stop')
+        self.mgt._orchestrator_stop_agents()
 
 
 ################################################################################
@@ -1434,3 +1448,4 @@ class DynamicAgentsMgt(AgentsMgt):
 
         self._computation_status[msg.computation] = 'finished'
         self.logger.debug(' status %s', self._computation_status.items())
+

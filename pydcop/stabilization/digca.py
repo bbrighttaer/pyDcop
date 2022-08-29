@@ -252,7 +252,7 @@ class DIGCA(DynamicGraphConstructionComputation):
                 msg=full_msg,
             )
 
-            # execute computation if order is bottom-up
+            # execute computation if order is bottom-up/async
             self.execute_computations('bottom-up')
 
             # report connection to graph UI
