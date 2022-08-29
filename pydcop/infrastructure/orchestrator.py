@@ -27,6 +27,7 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
+import copy
 import threading
 import time
 from collections import defaultdict
@@ -35,6 +36,8 @@ from time import perf_counter
 from typing import Dict, Tuple, Callable
 from typing import List
 from typing import Optional, Any
+
+import networkx as nx
 
 import yaml
 
@@ -418,6 +421,12 @@ class DynamicOrchestrator(Orchestrator):
 
         self._sim_end_t = threading.Thread(target=self._end_dynamic_simulation, name='sim_end_monitor', daemon=True)
 
+        self._copied_graph = None
+        if self.mgt._algo_module.GRAPH_TYPE == 'pseudotree':
+            self._current_graph = nx.DiGraph()
+        else:
+            self._current_graph = nx.Graph()
+
     def start(self):
         super(DynamicOrchestrator, self).start()
 
@@ -506,6 +515,14 @@ AgentRemovedMessage = message_type('agent_removed', [])
 
 RepairDoneMessage = message_type('repair_done',
                                  ['agent', 'selected_computations', 'metrics'])
+
+# A GraphConnectionMessage is sent by an agent to the orchestrator when
+# the agent connects to another agent, or it is disconnected from another agent.
+# Possible values of `action` are `add`, `remove`, and `remove_node`
+GraphConnectionMessage = message_type(
+    'graph_connection',
+    ['node1', 'node2', 'action']
+)
 
 
 class RepairRunMessage(Message):
@@ -1367,13 +1384,24 @@ class DynamicAgentsMgt(AgentsMgt):
             'metrics': self._on_metrics_msg,
             'end_of_computation': self._on_computation_end_msg,
             'stopped': self._on_agent_stopped_msg,
+            'graph_connection': self._on_graph_connection_msg,
         }
+
+    def _create_graph(self):
+        if self._algo_module.GRAPH_TYPE == 'pseudotree':
+            return nx.DiGraph()
+        else:
+            return nx.Graph()
 
     def _orchestrator_scenario_event(self, msg: Message, _: float):
         """
         Handler for dynamic environment events from the dynamic orchestrator.
         """
         self.logger.debug('Scenario event from : %s', msg)
+
+        self._orchestrator._copied_graph = copy.deepcopy(self._orchestrator._current_graph)
+        self.logger.debug(f'Copied graph: {self._orchestrator._copied_graph.number_of_nodes()}, '
+                          f'{self._orchestrator._copied_graph.number_of_edges()}')
 
         evt = msg.content
         leaving_agents = []
@@ -1449,3 +1477,26 @@ class DynamicAgentsMgt(AgentsMgt):
         self._computation_status[msg.computation] = 'finished'
         self.logger.debug(' status %s', self._computation_status.items())
 
+    def _on_graph_connection_msg(self, sender: str, msg: GraphConnectionMessage, _: float):
+        self.logger.debug(f'on graph connection msg from {sender}: {msg.node1} to {msg.node2} {msg.action}')
+        if msg.action == 'add':
+            self._orchestrator._current_graph.add_edge(msg.node1, msg.node2)
+        elif msg.action == 'remove':
+            self._orchestrator._current_graph.remove_edge(msg.node1, msg.node2)
+        elif msg.action == 'remove_node':
+            self._orchestrator._current_graph.remove_node(msg.node1)
+        else:
+            self.logger.info(f'Unknown graph operation')
+
+    def global_metrics(self, current_status, t):
+        metrics = super(DynamicAgentsMgt, self).global_metrics(current_status, t)
+        # add edit distance prop for the dynamic graph case
+        previous_graph = self._orchestrator._copied_graph
+        current_graph = self._orchestrator._current_graph
+
+        edit_distance = 0
+        if previous_graph and current_graph:
+            edit_distance = nx.graph_edit_distance(previous_graph, current_graph)
+        metrics['edit_distance'] = edit_distance
+
+        return metrics

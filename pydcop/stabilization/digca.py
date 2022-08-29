@@ -3,10 +3,11 @@ import random
 import time
 
 from pydcop.infrastructure.agents import DynamicAgent
-from pydcop.infrastructure.communication import ComputationMessage, MSG_ALGO
+from pydcop.infrastructure.communication import ComputationMessage, MSG_ALGO, MSG_MGT
 from pydcop.infrastructure.computations import MessagePassingComputation, message_type
 from pydcop.infrastructure.discovery import Discovery, BroadcastMessage
-from pydcop.infrastructure.orchestrator import ORCHESTRATOR
+from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_MGT
+from pydcop.infrastructure.orchestrator import ORCHESTRATOR, GraphConnectionMessage
 from pydcop.stabilization import Neighbor, Seconds
 from pydcop.stabilization.base import DynamicGraphConstructionComputation
 
@@ -257,6 +258,16 @@ class DIGCA(DynamicGraphConstructionComputation):
 
             # report connection to graph UI
 
+            self.post_msg(
+                ORCHESTRATOR_MGT,
+                GraphConnectionMessage(
+                    action='add',
+                    node1=msg.agent_id,
+                    node2=self.agent.name,
+                ),
+                MSG_MGT
+            )
+
             self.logger.info(f'Added as child of {msg.agent_id}')
 
     def _receive_already_active(self, sender: str, msg: AlreadyActive):
@@ -264,6 +275,16 @@ class DIGCA(DynamicGraphConstructionComputation):
 
     def _receive_parent_assigned(self, sender: str, msg: ParentAssigned):
         self.logger.info(f'Assigned as parent of {msg.agent_id}')
+
+        self.post_msg(
+            ORCHESTRATOR_MGT,
+            GraphConnectionMessage(
+                action='add',
+                node1=self.agent.name,
+                node2=msg.agent_id,
+            ),
+            MSG_MGT
+        )
 
         # execute computation (if topdown/async)
         self.execute_computations('top-down')
