@@ -1478,6 +1478,7 @@ class DynamicAgentsMgt(AgentsMgt):
         self.logger.debug(' status %s', self._computation_status.items())
 
     def _on_graph_connection_msg(self, sender: str, msg: GraphConnectionMessage, _: float):
+        self.logger.debug(f'on graph connection msg from {sender}: {msg.node1} to {msg.node2} {msg.action}')
         if msg.action == 'add':
             self._orchestrator._current_graph.add_edge(msg.node1, msg.node2)
         elif msg.action == 'remove':
