@@ -5,11 +5,13 @@ from pydcop.algorithms.cocoa import CoCoA, CoCoAMessage
 from pydcop.dcop.relations import constraint_from_str
 from pydcop.infrastructure.computations import register
 
-GRAPH_TYPE = "constraints_hypergraph"
+# GRAPH_TYPE = "constraints_hypergraph"
+GRAPH_TYPE = "pseudotree"
 
 algo_params = [
     AlgoParameterDef("lr", "float", None, 0.1),
     AlgoParameterDef("max_iter", "int", None, 100),
+    AlgoParameterDef("execution_order", "str", ["top-down", "bottom-up"], "bottom-up"),
 ]
 
 
