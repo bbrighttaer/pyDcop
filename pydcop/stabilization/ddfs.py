@@ -4,8 +4,11 @@ from typing import Iterable, Dict
 from pydcop.computations_graph.dynamic_graph import DynamicComputationNode
 from pydcop.dcop.relations import Constraint
 from pydcop.infrastructure.agents import DynamicAgent
+from pydcop.infrastructure.communication import MSG_MGT
 from pydcop.infrastructure.computations import MessagePassingComputation, message_type
 from pydcop.infrastructure.discovery import Discovery
+from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_MGT
+from pydcop.infrastructure.orchestrator import GraphConnectionMessage
 from pydcop.stabilization import Neighbor, AgentID, MaxDegree
 from pydcop.stabilization.base import DynamicGraphConstructionComputation
 
@@ -186,6 +189,30 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         self.parent = parent
         self.children = children
         self.logger.debug(f'Parent = {self.parent}, children = {self.children}')
+
+        if children:
+            for child in children:
+                # report connection
+                self.post_msg(
+                    ORCHESTRATOR_MGT,
+                    GraphConnectionMessage(
+                        action='add',
+                        node1=self.agent.name,
+                        node2=child.agent_id,
+                    ),
+                    MSG_MGT
+                )
+
+        if parent:
+            self.post_msg(
+                ORCHESTRATOR_MGT,
+                GraphConnectionMessage(
+                    action='add',
+                    node1=parent.agent_id,
+                    node2=self.agent.name,
+                ),
+                MSG_MGT
+            )
 
         # reconfigure properties for dcop computation
         configured = False

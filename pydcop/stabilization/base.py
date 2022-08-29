@@ -177,20 +177,10 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
                             )
                         )
 
-                    # report connection
-                    self.post_msg(
-                        ORCHESTRATOR_MGT,
-                        GraphConnectionMessage(
-                            action='add',
-                            node1=dynamic_node.variable.name,
-                            node2=n_comp,
-                        ),
-                        MSG_MGT
-                    )
-
         # set node properties for dcop computation
         dynamic_node.constraints = constraints
         dynamic_node.links = links
+        self.logger.debug(f'constraints = {constraints}, links = {links}')
         dynamic_node.neighbors = list(set(n for l in links for n in l.nodes if n != dynamic_node.name))
 
     def execute_computations(self, exec_order=None, is_reconfiguration=False):
@@ -214,6 +204,17 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         for comp in self.computations:
             self.discovery.unregister_computation(comp.name, agent=self.agent.name)
             comp.stop()
+
+        # report removal
+        self.post_msg(
+            ORCHESTRATOR_MGT,
+            GraphConnectionMessage(
+                action='remove_node',
+                node1=self.agent.name,
+                node2=None,
+            ),
+            MSG_MGT
+        )
 
     def _periodic_action(self, interval: int, func, *args, **kwargs):
         stopped = Event()
