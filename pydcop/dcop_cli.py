@@ -31,15 +31,16 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 
-
 """
 Main command-line interface for pydcop.
 
 
 """
 import logging
+import math
 import signal
 import argparse
+import time
 from os import path
 import sys
 from logging.config import fileConfig
@@ -60,7 +61,6 @@ TIMEOUT_SLACK = 40
 
 
 def main():
-
     parser = argparse.ArgumentParser(description='pydcop')
     parser.add_argument('-v', '--verbose', default='0',
                         choices=[0, 1, 2, 3], type=int,
@@ -104,7 +104,7 @@ def main():
     args = parser.parse_args()
 
     if args.version:
-        print('pydcop', __version__ )
+        print('pydcop', __version__)
         return
 
     _configure_logs(args.verbose, args.log)
@@ -112,7 +112,7 @@ def main():
     if hasattr(args, 'on_force_exit'):
         signal.signal(signal.SIGINT,
                       functools.partial(_on_force_exit, args.on_force_exit))
-
+    start = time.time()
     if hasattr(args, 'func'):
         if args.timeout or args.strict_timeout:
             if hasattr(args, 'on_timeout'):
@@ -149,9 +149,10 @@ def main():
         parser.parse_args(['-h'])
         sys.exit(2)
 
+    print(f'Simulation time: {time_since(start)}')
+
 
 def _on_force_exit(sub_exit_func, sig, frame):
-
     if cli_timer is not None:
         cli_timer.cancel()
 
@@ -173,13 +174,17 @@ def _configure_logs(level: int, log_conf: str):
     # Default: remove all logs except error
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.ERROR)
+    f_handler = logging.FileHandler(f'log.log', mode='w')
+    f_handler.setLevel(logging.DEBUG)
     # Format logs with hour and ms, but no date
     formatter = logging.Formatter(
         '%(asctime)s.%(msecs)03d - %(name)s - %(levelname)s - %(message)s',
         '%H:%M:%S')
     console_handler.setFormatter(formatter)
+    f_handler.setFormatter(formatter)
     root_logger = logging.getLogger('')
     root_logger.addHandler(console_handler)
+    root_logger.addHandler(f_handler)
 
     # Avoid logs when sending http requests:
     urllib_logger = logging.getLogger('urllib3.connectionpool')
@@ -207,6 +212,13 @@ def _configure_logs(level: int, log_conf: str):
         logging.info('logging: info')
     elif level == 3:
         logging.debug('logging: debug')
+
+
+def time_since(since):
+    s = time.time() - since
+    m = math.floor(s / 60)
+    s -= m * 60
+    return '%dm %ds' % (m, s)
 
 
 if __name__ == '__main__':

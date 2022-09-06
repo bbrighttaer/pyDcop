@@ -38,6 +38,9 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         self.children: List[Neighbor] = []
         self.neighbor_comps: List[str] = []
 
+        # tracks the last time a neighbor sent a message
+        self.last_contact_time = {}
+
         # added to avoid AttributeError on metric collection
         self.cycle_count = 0
 
@@ -57,6 +60,10 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         return nodes
 
     @property
+    def neighbor_ids(self) -> List[str]:
+        return [n.agent_id for n in self.neighbors]
+
+    @property
     def computations(self) -> List[MessagePassingComputation]:
         return self._dcop_comps
 
@@ -67,6 +74,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
 
     def on_message(self, sender: str, msg: Message, t: float):
         try:
+            self.last_contact_time[msg.agent_id] = time.time()
             self._msg_handlers[msg.type](sender, msg)
         except KeyError:
             self.logger.error(f'Could not find function callback for msg type: {msg.type}')
@@ -223,3 +231,27 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
                 func(*args, **kwargs)
         threading.Thread(target=loop).start()
         return stopped.set
+
+    def _has_constraint_with(self, neighbor_comps: List[str]) -> bool:
+        """
+        Checks if the given neighbor computations has at least one constraint with the current agent.
+        This is implemented to facilitate simulation. In other scenarios where a default constraint function is used or
+        the same constraint function is used by all connections, this function may not be needed.
+
+        Parameters
+        ----------
+        neighbor_comps: list
+            The list of neighbor computations to check.
+
+        Returns
+        -------
+            True if at least one constraint exists between the current agent (var computation) and any of the given
+            neighbor (var) computations. Otherwise, False.
+        """
+        for computation in self.computations:
+            var_constraints: Iterable[Constraint] = computation.computation_def.node.var_constraints
+            for constraint in var_constraints:
+                common = set(constraint.scope_names) & set(neighbor_comps)
+                if common:
+                    return True
+        return False
