@@ -23,7 +23,7 @@ class State(enum.Enum):
 # message types
 Announce = message_type(
     'announce',
-    fields=['agent_id', 'address'],
+    fields=['agent_id', 'address', 'comps'],
 )
 
 AnnounceResponse = message_type(
@@ -86,11 +86,11 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.state = State.INACTIVE
         self.announce_response_list = []
         self.connect_interval: Seconds = 5
-        self.announce_response_listening_time: Seconds = 1
+        self.announce_response_listening_time: Seconds = 2
 
         self.keep_alive_agents = []
-        self.keep_alive_check_interval: Seconds = 5
-        self.keep_alive_msg_interval: Seconds = 2
+        self.keep_alive_check_interval: Seconds = 7
+        self.keep_alive_msg_interval: Seconds = 5
 
         self._msg_handlers = {
             'announce': self._receive_announce,
@@ -105,14 +105,14 @@ class DIGCA(DynamicGraphConstructionComputation):
     def on_start(self):
         self.logger.debug(f'On start of {self.name}')
         # make a first connect call on startup
-        self._connect()
+        # self._connect()
 
         # make subsequent (repeated) connect calls in `self.connect_interval` seconds
         self.add_periodic_action(self.connect_interval, self._connect)
 
         # start processes for connection maintenance
-        self.add_periodic_action(self.keep_alive_check_interval, self._inspect_connections)
-        self.add_periodic_action(self.keep_alive_msg_interval, self._send_keep_alive_msg)
+        # self.add_periodic_action(self.keep_alive_check_interval, self._inspect_connections)
+        # self.add_periodic_action(self.keep_alive_msg_interval, self._send_keep_alive_msg)
 
     def _connect(self):
         if self.state == State.INACTIVE and not self.parent:
@@ -123,7 +123,8 @@ class DIGCA(DynamicGraphConstructionComputation):
                 '_discovery_' + ORCHESTRATOR,
                 BroadcastMessage(message=Announce(
                     agent_id=self.agent.name,
-                    address=self.address
+                    address=self.address,
+                    comps=[c.name for c in self.computations] + [self.name]
                 ),
                     originator=self.name,
                     recipient_prefix=NAME
@@ -136,7 +137,7 @@ class DIGCA(DynamicGraphConstructionComputation):
             # select an agent from the list of respondents (if any)
             # self.logger.debug(f'Selecting from announce response list: {self.announce_response_list}')
             if self.announce_response_list:
-                selected_agent = random.choice(self.announce_response_list)
+                selected_agent = self._var_theta()
 
                 # construct add-me msg
                 full_msg = ComputationMessage(
@@ -163,8 +164,11 @@ class DIGCA(DynamicGraphConstructionComputation):
             # clear announce response list
             self.announce_response_list.clear()
 
+    def _var_theta(self):
+        return random.choice(self.announce_response_list)
+
     def _receive_announce(self, sender: str, msg: Announce):
-        if self.state == State.INACTIVE and self._phi(msg.agent_id):
+        if self.state == State.INACTIVE and self._phi(msg.agent_id) and self._has_constraint_with(msg.comps):
             self.logger.debug(f'Sending announce response to {msg.agent_id}')
 
             # construct announce response msg
@@ -289,8 +293,23 @@ class DIGCA(DynamicGraphConstructionComputation):
         # execute computation (if topdown/async)
         self.execute_computations('top-down')
 
-    def _phi(self, agt_id):
-        return self.agent.name < agt_id
+    def _phi(self, agt_id) -> bool:
+        """
+        Implements phi using index of agents extracted from agent IDs. This function assumes that agents are named
+        following the pattern `axx`, where xx indicates a number index (e.g. a0, a1, a54, etc.).
+
+        Parameters
+        ----------
+        agt_id: str
+            The id/name of the agent to be compared with.
+
+        Returns
+        -------
+            Whether the current agent has a lower rank than the given agent in the global agent ordering.
+        """
+        cur_agt_index = int(self.agent.name[1:])
+        other_agt_index = int(agt_id[1:])
+        return cur_agt_index < other_agt_index
 
     """ Connection stabilization section """
 
@@ -307,7 +326,7 @@ class DIGCA(DynamicGraphConstructionComputation):
             )
 
     def _receive_keep_alive(self, sender: str, msg: KeepAlive):
-        self.logger.debug(f'Received keep alive msg: {msg}')
+        self.logger.debug(f'Received keep alive msg: {msg}, current neighbors: {self.neighbor_ids}')
         if msg.agent_id not in self.keep_alive_agents:
             self.keep_alive_agents.append(msg.agent_id)
 
@@ -318,7 +337,9 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.logger.debug(f'Inspecting connections: {self.keep_alive_agents}')
         affected = False
         for neighbor in self.neighbors:
-            if neighbor.agent_id not in self.keep_alive_agents:
+            if neighbor.agent_id not in self.keep_alive_agents \
+                    and neighbor.agent_id in self.last_contact_time \
+                    and self.last_contact_time[neighbor.agent_id] + self.keep_alive_msg_interval < time.time():
                 self.logger.debug(f'Did not hear from {neighbor.agent_id}')
                 self.unregister_neighbor(neighbor, callback=self._on_neighbor_removed)
 
