@@ -8,7 +8,7 @@ from pydcop.infrastructure.computations import MessagePassingComputation, messag
 from pydcop.infrastructure.discovery import Discovery, BroadcastMessage
 from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_MGT
 from pydcop.infrastructure.orchestrator import ORCHESTRATOR, GraphConnectionMessage
-from pydcop.stabilization import Neighbor, Seconds
+from pydcop.stabilization import Neighbor, Seconds, transient_communication
 from pydcop.stabilization.base import DynamicGraphConstructionComputation
 
 NAME = 'DIGCA'
@@ -103,9 +103,10 @@ class DIGCA(DynamicGraphConstructionComputation):
         }
 
     def on_start(self):
+        super(DIGCA, self).on_start()
         self.logger.debug(f'On start of {self.name}')
         # make a first connect call on startup
-        # self._connect()
+        self._connect()
 
         # make subsequent (repeated) connect calls in `self.connect_interval` seconds
         self.add_periodic_action(self.connect_interval, self._connect)
@@ -152,11 +153,13 @@ class DIGCA(DynamicGraphConstructionComputation):
                 )
 
                 # send add-me msg
-                selected_agent.address.receive_msg(
-                    src_agent=self.agent.name,
-                    dest_agent=selected_agent.agent_id,
-                    msg=full_msg,
-                )
+                with transient_communication(self.discovery, selected_agent.agent_id, selected_agent.address):
+                    self.agent.communication.send_msg(
+                        src_agent=self.name,
+                        dest_agent=selected_agent.agent_id,
+                        msg=full_msg,
+                        on_error='fail',
+                    )
 
                 # update state
                 self.state = State.ACTIVE
@@ -180,11 +183,13 @@ class DIGCA(DynamicGraphConstructionComputation):
             )
 
             # send announce response msg
-            msg.address.receive_msg(
-                src_agent=self.agent.name,
-                dest_agent=msg.agent_id,
-                msg=full_msg,
-            )
+            with transient_communication(self.discovery, msg.agent_id, msg.address):
+                self.agent.communication.send_msg(
+                    src_agent=self.agent.name,
+                    dest_agent=msg.agent_id,
+                    msg=full_msg,
+                    on_error='fail'
+                )
 
     def _receive_announce_response(self, sender: str, msg: AnnounceResponse):
         if self.state == State.INACTIVE:
@@ -199,23 +204,14 @@ class DIGCA(DynamicGraphConstructionComputation):
             # registration and configuration
             self.register_neighbor(neighbor)
 
-            # construct child-added msg
-            full_msg = ComputationMessage(
-                src_comp=self.name,
-                dest_comp=f'{NAME}-{msg.agent_id}',
+            # construct and send child-added msg
+            self.post_msg(
+                target=f'{NAME}-{msg.agent_id}',
                 msg=ChildAdded(
                     agent_id=self.agent.name,
                     address=self.address,
                     comps=[c.name for c in self.computations] + [self.name]
-                ),
-                msg_type=MSG_ALGO,
-            )
-
-            # send child-added msg
-            msg.address.receive_msg(
-                src_agent=self.agent.name,
-                dest_agent=msg.agent_id,
-                msg=full_msg,
+                )
             )
 
         else:
@@ -228,11 +224,12 @@ class DIGCA(DynamicGraphConstructionComputation):
             )
 
             # send already-active msg
-            msg.address.receive_msg(
-                src_agent=self.agent.name,
-                dest_agent=msg.agent_id,
-                msg=full_msg,
-            )
+            with transient_communication(self.discovery, msg.agent_id, msg.address):
+                self.agent.communication.send_msg(
+                    src_agent=self.agent.name,
+                    dest_agent=msg.agent_id,
+                    msg=full_msg,
+                )
 
     def _receive_child_added(self, sender: str, msg: ChildAdded):
         if self.state == State.ACTIVE and not self.parent:
@@ -242,19 +239,10 @@ class DIGCA(DynamicGraphConstructionComputation):
             # registration and configuration
             self.register_neighbor(self.parent)
 
-            # construct parent-assigned msg
-            full_msg = ComputationMessage(
-                src_comp=self.name,
-                dest_comp=f'{NAME}-{msg.agent_id}',
+            # construct and send parent-assigned msg
+            self.post_msg(
+                target=f'{NAME}-{msg.agent_id}',
                 msg=ParentAssigned(agent_id=self.agent.name, address=self.address),
-                msg_type=MSG_ALGO,
-            )
-
-            # send parent-assigned msg
-            msg.address.receive_msg(
-                src_agent=self.agent.name,
-                dest_agent=msg.agent_id,
-                msg=full_msg,
             )
 
             # execute computation if order is bottom-up/async

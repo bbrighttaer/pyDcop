@@ -60,7 +60,7 @@ from pydcop.infrastructure.orchestrator import (
     RepairDoneMessage,
     ResumeMessage,
     AgentRemovedMessage,
-    SetMetricsModeMessage,
+    SetMetricsModeMessage, RunStabilizationMessage,
 )
 
 ORCHESTRATOR = "orchestrator"
@@ -272,6 +272,8 @@ class OrchestrationComputation(MessagePassingComputation):
             "stop": self._on_stop_request,
             # When requested to leave, simply stop
             "agent_removed": self._on_stop_request,
+            # When requested to run stabilization computation
+            "run_stabilization": self._on_run_stabilization_computation,
         }
 
     @property
@@ -368,6 +370,12 @@ class OrchestrationComputation(MessagePassingComputation):
     def _on_repair_run(self, sender: str, msg: RepairRunMessage, t: float):
         self.logger.info("RepairRun msg from %s : %s at %s", sender, msg, t)
         self.agent.repair_run()
+
+    def _on_run_stabilization_computation(self, sender: str, msg: RunStabilizationMessage, t: float):
+        self.logger.info("RunStabilization msg from %s : %s at %s", sender, msg, t)
+        assert hasattr(self.agent, 'stabilization_comp'), \
+            f'{self.agent.__class__.name} does not have a stabilization_comp attribute'
+        self.agent.run([self.agent.stabilization_comp.name])
 
     def on_computation_value_changed(self, computation: str, value, cost, cycle):
         """

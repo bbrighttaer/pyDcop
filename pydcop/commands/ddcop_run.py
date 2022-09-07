@@ -15,7 +15,7 @@ from pydcop.dcop.dcop import filter_dcop
 from pydcop.dcop.yamldcop import load_dcop_from_file, load_scenario_from_file
 from pydcop.computations_graph import dynamic_graph
 from pydcop.distribution.yamlformat import load_dist_from_file
-from pydcop.infrastructure.run import run_local_process_dcop, run_local_thread_dcop
+from pydcop.infrastructure.ddcop_run import run_local_process_dcop, run_local_thread_dcop
 
 logger = logging.getLogger("pydcop.cli.ddcop_run")
 
@@ -202,7 +202,6 @@ def run_cmd(args, timer=None, timeout=None):
             collect_moment=args.collect_on,
             period=period,
             stabilization_algorithm=args.stabilization_algorithm,
-            use_dynamic_agents=True,
         )
     elif args.mode == "process":
 
@@ -223,22 +222,23 @@ def run_cmd(args, timer=None, timeout=None):
             collect_moment=args.collect_on,
             period=period,
             stabilization_algorithm=args.stabilization_algorithm,
-            use_dynamic_agents=True
         )
 
     orchestrator.set_error_handler(_orchestrator_error)
 
     try:
-        orchestrator.run(scenario, timeout=timeout)
-        if timer:
-            timer.cancel()
-        if not timeout_stopped:
-            if orchestrator.status == "TIMEOUT":
-                _results("TIMEOUT")
-                sys.exit(0)
-            elif orchestrator.status != "STOPPED":
-                _results("FINISHED")
-                sys.exit(0)
+        orchestrator.deploy_computations()
+        if orchestrator.wait_ready():
+            orchestrator.run(scenario, timeout=timeout)
+            if timer:
+                timer.cancel()
+            if not timeout_stopped:
+                if orchestrator.status == "TIMEOUT":
+                    _results("TIMEOUT")
+                    sys.exit(0)
+                elif orchestrator.status != "STOPPED":
+                    _results("FINISHED")
+                    sys.exit(0)
 
     except Exception as e:
         logger.error(e, exc_info=1)

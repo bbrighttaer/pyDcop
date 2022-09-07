@@ -1449,9 +1449,6 @@ class DynamicAgent(Agent):
                  ui_port=None, delay: float = None, stabilization_algorithm: str = None):
         super(DynamicAgent, self).__init__(name, comm, agent_def, ui_port=ui_port, delay=delay)
 
-        # lock for enabling synchronization of operations that could otherwise lead to race-conditions
-        self.sync_lock = Lock()
-
         if stabilization_algorithm:
             self.logger.debug(f'Setting up {stabilization_algorithm} stabilization algorithm')
 
@@ -1470,7 +1467,7 @@ class DynamicAgent(Agent):
 
         # add, register, and start stabilization computation
         self.add_computation(self.stabilization_comp)
-        self.run([self.stabilization_comp.name])
+        # self.run([self.stabilization_comp.name])
 
         return True
 

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+python dcop_cli.py -v 3 ddcop_run --algo c_cocoa --collect_on period --period 1000 --run_metric metrics_value_ddcop_test.csv --distribution ../simulation-files/yaml/max-deg-3-graph-1-1662513089.562507-50-agents.sim-distribution.yaml --scenario ../simulation-files/yaml/max-deg-3-graph-1-1662513089.562507-50-agents.sim-scenario.yaml ../simulation-files/yaml/max-deg-3-graph-1-1662513089.562507-50-agents.sim.yaml -b digca -m process

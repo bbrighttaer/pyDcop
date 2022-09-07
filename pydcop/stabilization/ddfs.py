@@ -80,6 +80,8 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         self.t.daemon = True
 
     def on_start(self):
+        super(DistributedDFS, self).on_start()
+
         self.logger.debug(f'On start of {self.name}')
         self.t.start()
 
