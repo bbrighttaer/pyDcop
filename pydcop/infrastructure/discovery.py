@@ -147,7 +147,8 @@ class DirectoryComputation(MessagePassingComputation):
             'unpublish_computation': self._on_unpublish_computation,
             'subscribe_computation': self._on_subscribe_computation,
             'publish_replica': self._on_publish_replica,
-            'subscribe_replica': self._on_subscribe_replica
+            'subscribe_replica': self._on_subscribe_replica,
+            'broadcast_message': self._on_broadcast_message,
         }
 
     @property
@@ -257,6 +258,12 @@ class DirectoryComputation(MessagePassingComputation):
             self.logger.info('UnSubscribe for replica %s from %s',
                              msg.replica, sender)
             self.directory.unsubscribe_from_replicas(sender, msg.replica)
+
+    def _on_broadcast_message(self, sender, msg: BroadcastMessage):
+        # broadcast message to available targets (except sender)
+        for comp in self.directory.discovery.computations():
+            if comp.startswith(msg.recipient_prefix) and comp != msg.originator:
+                self.post_msg(comp, msg.message, on_error='fail')
 
     def notify_agent_registered(self, interested: DiscoveryName,
                                 agents: Union[AgentName, List[AgentName]],
@@ -399,10 +406,10 @@ class Directory(object):
             # agent un-registration is only allowed if the agent has no
             # non-technical computation registered
             non_technical = self.discovery.agent_computations(agent)
-            # if non_technical:
-            #     raise DiscoveryException(
-            #         'Cannot unregister agent with non-technical '
-            #         'computations : {} - {} '.format(agent, non_technical))
+            if non_technical:
+                raise DiscoveryException(
+                    'Cannot unregister agent with non-technical '
+                    'computations : {} - {} '.format(agent, non_technical))
 
             for computation in self.discovery.agent_computations(
                     agent, include_technical=True):
@@ -580,7 +587,6 @@ class DiscoveryComputation(MessagePassingComputation):
             'publish_computation': self._on_computation_added,
             'unpublish_computation': self._on_computation_removed,
             'publish_replica': self._on_replica_publish,
-            'broadcast_message': self._on_broadcast_message,
         }
 
     @property
@@ -622,12 +628,6 @@ class DiscoveryComputation(MessagePassingComputation):
         else:
             self.discovery.unregister_replica(msg.replica, msg.agent,
                                               publish=False)
-
-    def _on_broadcast_message(self, sender, msg: BroadcastMessage):
-        # broadcast message to available targets (except sender)
-        for comp in self.discovery.computations():
-            if comp.startswith(msg.recipient_prefix) and comp != msg.originator:
-                self.post_msg(comp, msg.message, on_error='ignore')
 
     def send_to_directory(self, msg):
         if self.directory_name is not None:

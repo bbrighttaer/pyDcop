@@ -1466,7 +1466,7 @@ class DynamicAgent(Agent):
         self.logger.info('I am a dynamic agent!')
 
         # add, register, and start stabilization computation
-        self.add_computation(self.stabilization_comp)
+        # self.add_computation(self.stabilization_comp)
         # self.run([self.stabilization_comp.name])
 
         return True
