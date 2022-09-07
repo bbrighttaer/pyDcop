@@ -524,6 +524,12 @@ GraphConnectionMessage = message_type(
     ['node1', 'node2', 'action']
 )
 
+# RunStabilizationMessage is sent by the orchestrator to a registered agent to request
+# that the agent runs its stabilization algorithm
+RunStabilizationMessage = message_type(
+    'run_stabilization', []
+)
+
 
 class RepairRunMessage(Message):
     """
@@ -1408,7 +1414,8 @@ class DynamicAgentsMgt(AgentsMgt):
         for a in evt.actions:
             if a.type == 'add_agent':
                 self.logger.info('Event action: Adding agent %s ', a)
-                self._add_agent(a.args['agent'])
+                # self._add_agent(a.args['agent'])
+                self._run_stabilization_computation(a.args['agent'])
 
             elif a.type == 'remove_agent':
                 self.logger.info('Event action: Remove agent %s ', a)
@@ -1423,6 +1430,13 @@ class DynamicAgentsMgt(AgentsMgt):
             else:
                 self.logger.error('Unknown event action %s ', a)
                 raise ValueError(f'Unknown event action ' + str(a))
+
+    def _run_stabilization_computation(self, agent):
+        """
+        Runs the stabilization algorithm of the given agent
+        """
+        self.logger.debug(f'Requesting {agent} to start stabilization algorithm')
+        self._send_mgt_msg(agent, RunStabilizationMessage())
 
     def _add_agent(self, agent_name):
         """

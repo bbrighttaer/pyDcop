@@ -1,0 +1,363 @@
+events:
+- id: w0
+  delay: 1
+- id: e0
+  actions:
+  - type: add_agent
+    agent: a0
+- id: w1
+  delay: 12
+- id: e1
+  actions:
+  - type: add_agent
+    agent: a1
+- id: w2
+  delay: 12
+- id: e2
+  actions:
+  - type: add_agent
+    agent: a3
+- id: w3
+  delay: 12
+- id: e3
+  actions:
+  - type: add_agent
+    agent: a2
+- id: w4
+  delay: 12
+- id: e4
+  actions:
+  - type: add_agent
+    agent: a30
+- id: w5
+  delay: 12
+- id: e5
+  actions:
+  - type: add_agent
+    agent: a37
+- id: w6
+  delay: 12
+- id: e6
+  actions:
+  - type: add_agent
+    agent: a17
+- id: w7
+  delay: 12
+- id: e7
+  actions:
+  - type: add_agent
+    agent: a20
+- id: w8
+  delay: 12
+- id: e8
+  actions:
+  - type: add_agent
+    agent: a32
+- id: w9
+  delay: 12
+- id: e9
+  actions:
+  - type: add_agent
+    agent: a33
+- id: w10
+  delay: 12
+- id: e10
+  actions:
+  - type: add_agent
+    agent: a40
+- id: w11
+  delay: 12
+- id: e11
+  actions:
+  - type: add_agent
+    agent: a26
+- id: w12
+  delay: 12
+- id: e12
+  actions:
+  - type: add_agent
+    agent: a35
+- id: w13
+  delay: 12
+- id: e13
+  actions:
+  - type: add_agent
+    agent: a27
+- id: w14
+  delay: 12
+- id: e14
+  actions:
+  - type: add_agent
+    agent: a31
+- id: w15
+  delay: 12
+- id: e15
+  actions:
+  - type: add_agent
+    agent: a38
+- id: w16
+  delay: 12
+- id: e16
+  actions:
+  - type: add_agent
+    agent: a16
+- id: w17
+  delay: 12
+- id: e17
+  actions:
+  - type: add_agent
+    agent: a6
+- id: w18
+  delay: 12
+- id: e18
+  actions:
+  - type: add_agent
+    agent: a7
+- id: w19
+  delay: 12
+- id: e19
+  actions:
+  - type: add_agent
+    agent: a13
+- id: w20
+  delay: 12
+- id: e20
+  actions:
+  - type: add_agent
+    agent: a8
+- id: w21
+  delay: 12
+- id: e21
+  actions:
+  - type: add_agent
+    agent: a49
+- id: w22
+  delay: 12
+- id: e22
+  actions:
+  - type: add_agent
+    agent: a48
+- id: w23
+  delay: 12
+- id: e23
+  actions:
+  - type: add_agent
+    agent: a14
+- id: w24
+  delay: 12
+- id: e24
+  actions:
+  - type: add_agent
+    agent: a15
+- id: w25
+  delay: 12
+- id: e25
+  actions:
+  - type: add_agent
+    agent: a19
+- id: w26
+  delay: 12
+- id: e26
+  actions:
+  - type: add_agent
+    agent: a18
+- id: w27
+  delay: 12
+- id: e27
+  actions:
+  - type: add_agent
+    agent: a22
+- id: w28
+  delay: 12
+- id: e28
+  actions:
+  - type: add_agent
+    agent: a24
+- id: w29
+  delay: 12
+- id: e29
+  actions:
+  - type: add_agent
+    agent: a41
+- id: w30
+  delay: 12
+- id: e30
+  actions:
+  - type: add_agent
+    agent: a10
+- id: w31
+  delay: 12
+- id: e31
+  actions:
+  - type: add_agent
+    agent: a28
+- id: w32
+  delay: 12
+- id: e32
+  actions:
+  - type: add_agent
+    agent: a23
+- id: w33
+  delay: 12
+- id: e33
+  actions:
+  - type: add_agent
+    agent: a39
+- id: w34
+  delay: 12
+- id: e34
+  actions:
+  - type: add_agent
+    agent: a9
+- id: w35
+  delay: 12
+- id: e35
+  actions:
+  - type: add_agent
+    agent: a46
+- id: w36
+  delay: 12
+- id: e36
+  actions:
+  - type: add_agent
+    agent: a4
+- id: w37
+  delay: 12
+- id: e37
+  actions:
+  - type: add_agent
+    agent: a11
+- id: w38
+  delay: 12
+- id: e38
+  actions:
+  - type: add_agent
+    agent: a21
+- id: w39
+  delay: 12
+- id: e39
+  actions:
+  - type: add_agent
+    agent: a42
+- id: w40
+  delay: 12
+- id: e40
+  actions:
+  - type: add_agent
+    agent: a5
+- id: w41
+  delay: 12
+- id: e41
+  actions:
+  - type: add_agent
+    agent: a43
+- id: w42
+  delay: 12
+- id: e42
+  actions:
+  - type: add_agent
+    agent: a45
+- id: w43
+  delay: 12
+- id: e43
+  actions:
+  - type: add_agent
+    agent: a47
+- id: w44
+  delay: 12
+- id: e44
+  actions:
+  - type: add_agent
+    agent: a12
+- id: w45
+  delay: 12
+- id: e45
+  actions:
+  - type: add_agent
+    agent: a34
+- id: w46
+  delay: 12
+- id: e46
+  actions:
+  - type: add_agent
+    agent: a29
+- id: w47
+  delay: 12
+- id: e47
+  actions:
+  - type: add_agent
+    agent: a36
+- id: w48
+  delay: 12
+- id: e48
+  actions:
+  - type: add_agent
+    agent: a25
+- id: w49
+  delay: 12
+- id: e49
+  actions:
+  - type: add_agent
+    agent: a44
+- id: w50
+  delay: 30
+#- id: e50
+#  actions:
+#  - type: remove_agent
+#    agent: a7
+#- id: w51
+#  delay: 12
+#- id: e51
+#  actions:
+#  - type: remove_agent
+#    agent: a12
+#- id: w52
+#  delay: 12
+#- id: e52
+#  actions:
+#  - type: remove_agent
+#    agent: a18
+#- id: w53
+#  delay: 12
+#- id: e53
+#  actions:
+#  - type: remove_agent
+#    agent: a46
+#- id: w54
+#  delay: 12
+#- id: e54
+#  actions:
+#  - type: remove_agent
+#    agent: a39
+#- id: w55
+#  delay: 12
+#- id: e55
+#  actions:
+#  - type: remove_agent
+#    agent: a26
+#- id: w56
+#  delay: 12
+#- id: e56
+#  actions:
+#  - type: remove_agent
+#    agent: a28
+#- id: w57
+#  delay: 12
+#- id: e57
+#  actions:
+#  - type: remove_agent
+#    agent: a38
+#- id: w58
+#  delay: 12
+#- id: e58
+#  actions:
+#  - type: remove_agent
+#    agent: a47
+#- id: w59
+#  delay: 12
+#- id: e59
+#  actions:
+#  - type: remove_agent
+#    agent: a49
+#- id: w60
+#  delay: 12

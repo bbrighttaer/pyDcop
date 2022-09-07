@@ -90,8 +90,6 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         """
         self.logger.debug(f'Adding computation: {str(comp)}')
         self._dcop_comps.append(comp)
-        setattr(comp, 'sync_lock', self.agent.sync_lock)
-        self.agent.run(comp.name)
 
         if self._on_computation_added_cb:
             self._on_computation_added_cb(comp)
@@ -202,6 +200,12 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
                         computation.start()
         else:
             self.logger.debug('No neighbors available for computation')
+
+    def on_start(self):
+        super(DynamicGraphConstructionComputation, self).on_start()
+
+        # start DCOP computations
+        self.agent.run([c.name for c in self.computations])
 
     def on_stop(self):
         # cancel any background process

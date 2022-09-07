@@ -399,10 +399,10 @@ class Directory(object):
             # agent un-registration is only allowed if the agent has no
             # non-technical computation registered
             non_technical = self.discovery.agent_computations(agent)
-            if non_technical:
-                raise DiscoveryException(
-                    'Cannot unregister agent with non-technical '
-                    'computations : {} - {} '.format(agent, non_technical))
+            # if non_technical:
+            #     raise DiscoveryException(
+            #         'Cannot unregister agent with non-technical '
+            #         'computations : {} - {} '.format(agent, non_technical))
 
             for computation in self.discovery.agent_computations(
                     agent, include_technical=True):

@@ -33,6 +33,7 @@ import importlib
 import types
 from numbers import Number
 from typing import Callable
+import numpy as np
 
 from pydcop.utils.various import func_args
 
@@ -204,6 +205,8 @@ def simple_repr(o):
         return {k: simple_repr(o[k]) for k in o}
     elif o is None:
         return None
+    elif isinstance(o, np.ndarray):
+        return simple_repr(o.tolist())
     else:
         raise SimpleReprException('Could not build a simple representation '
                                   'for "{}" type={}'.format(o, type(o)))

@@ -1,5 +1,1 @@
 time,cycle,cost,violation,msg_count,msg_size,status
-0,0,,,7,0,RUNNING
-0,0,,,9,0,RUNNING
-0,0,,,16,0,RUNNING
-0,0,,,21,10,RUNNING
