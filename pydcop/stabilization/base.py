@@ -106,11 +106,12 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
             self.neighbor_comps.append(comp)
             configure = True
         self.logger.debug(f'registered neighbor {neighbor.agent_id}, comps={self.neighbor_comps}')
-        if configure:
-            self.configure_computations()
 
-            if callback:
-                callback(neighbor)
+        # if configure:
+        #     self.configure_computations()
+        #
+        #     if callback:
+        #         callback(neighbor)
 
     def unregister_neighbor(self, neighbor: Neighbor, callback: Callable = None):
         self.logger.debug(f'Unregistering neighbor {neighbor.agent_id}')
@@ -190,22 +191,23 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         dynamic_node.neighbors = list(set(n for l in links for n in l.nodes if n != dynamic_node.name))
 
     def execute_computations(self, exec_order=None, is_reconfiguration=False):
-        if self.neighbors:
-            for computation in self.computations:
-                if hasattr(computation, 'computation_def'):
-                    algo_exec_order = computation.computation_def.algo.params.get('execution_order', None)
-                    if algo_exec_order is None or algo_exec_order == exec_order or is_reconfiguration:
-                        self.logger.debug(f'Executing dcop, neighbors {computation.computation_def.node.neighbors}')
-                        time.sleep(.3)
-                        computation.start()
-        else:
-            self.logger.debug('No neighbors available for computation')
+        # if self.neighbors:
+        #     for computation in self.computations:
+        #         if hasattr(computation, 'computation_def'):
+        #             algo_exec_order = computation.computation_def.algo.params.get('execution_order', None)
+        #             if algo_exec_order is None or algo_exec_order == exec_order or is_reconfiguration:
+        #                 self.logger.debug(f'Executing dcop, neighbors {computation.computation_def.node.neighbors}')
+        #                 time.sleep(.3)
+        #                 computation.start()
+        # else:
+        #     self.logger.debug('No neighbors available for computation')
+        pass
 
     def on_start(self):
         super(DynamicGraphConstructionComputation, self).on_start()
 
         # start DCOP computations
-        self.agent.run([c.name for c in self.computations])
+        # self.agent.run([c.name for c in self.computations])
 
     def on_stop(self):
         # cancel any background process
@@ -214,19 +216,19 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
 
         # stop all computations
         for comp in self.computations:
-            self.discovery.unregister_computation(comp.name, agent=self.agent.name)
+            # self.discovery.unregister_computation(comp.name, agent=self.agent.name)
             comp.stop()
 
         # report removal
-        self.post_msg(
-            ORCHESTRATOR_MGT,
-            GraphConnectionMessage(
-                action='remove_node',
-                node1=self.agent.name,
-                node2=None,
-            ),
-            MSG_MGT
-        )
+        # self.post_msg(
+        #     ORCHESTRATOR_MGT,
+        #     GraphConnectionMessage(
+        #         action='remove_node',
+        #         node1=self.agent.name,
+        #         node2=None,
+        #     ),
+        #     MSG_MGT
+        # )
 
     def _periodic_action(self, interval: int, func, *args, **kwargs):
         stopped = Event()

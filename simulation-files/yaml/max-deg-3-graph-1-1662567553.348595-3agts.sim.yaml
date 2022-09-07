@@ -1,0 +1,45 @@
+name: max-deg-3-graph-1-1662567553.348595-3agts.sim
+objective: min
+domains:
+  d2:
+    values:
+    - -20
+    - 25
+    - 19
+  d0:
+    values:
+    - -34
+    - -3
+    - 27
+  d1:
+    values:
+    - 10
+    - 30
+    - 24
+variables:
+  var2:
+    domain: d2
+  var0:
+    domain: d0
+  var1:
+    domain: d1
+constraints:
+  c0:
+    type: intention
+    function: -4.69 * var0**2 + 3.655 * var0 * var1 + -0.273 * var1**2
+    differentials:
+      var0: 2 * -4.69 * var0 + 3.655 * var1
+      var1: 3.655 * var0 + 2 * -0.273 * var1
+  c1:
+    type: intention
+    function: -2.406 * var1**2 + -2.657 * var1 * var2 + 4.956 * var2**2
+    differentials:
+      var1: 2 * -2.406 * var1 + -2.657 * var2
+      var2: -2.657 * var1 + 2 * 4.956 * var2
+agents:
+  a0:
+    id: '0'
+  a1:
+    id: '1'
+  a2:
+    id: '2'

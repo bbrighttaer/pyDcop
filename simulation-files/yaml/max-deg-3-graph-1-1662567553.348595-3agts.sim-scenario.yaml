@@ -1,0 +1,21 @@
+events:
+- id: w0
+  delay: 1
+- id: e0
+  actions:
+  - type: add_agent
+    agent: a0
+- id: w1
+  delay: 12
+- id: e1
+  actions:
+  - type: add_agent
+    agent: a1
+- id: w2
+  delay: 12
+- id: e2
+  actions:
+  - type: add_agent
+    agent: a2
+- id: w3
+  delay: 12

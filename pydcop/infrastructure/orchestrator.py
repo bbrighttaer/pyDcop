@@ -457,6 +457,7 @@ class DynamicOrchestrator(Orchestrator):
         self.scenario_complete_event.wait()
         self.logger.info('All Dynamic DCOP computation have finished : stop')
         self.mgt._orchestrator_stop_agents()
+        self.logger.info(f'Final graph: {self._current_graph.edges.data()}')
 
 
 ################################################################################
@@ -1408,6 +1409,7 @@ class DynamicAgentsMgt(AgentsMgt):
         self._orchestrator._copied_graph = copy.deepcopy(self._orchestrator._current_graph)
         self.logger.debug(f'Copied graph: {self._orchestrator._copied_graph.number_of_nodes()}, '
                           f'{self._orchestrator._copied_graph.number_of_edges()}')
+        self.logger.info(self._orchestrator._copied_graph.edges.data())
 
         evt = msg.content
         leaving_agents = []

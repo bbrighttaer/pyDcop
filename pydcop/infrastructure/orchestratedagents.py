@@ -65,6 +65,7 @@ from pydcop.infrastructure.orchestrator import (
 
 ORCHESTRATOR = "orchestrator"
 ORCHESTRATOR_MGT = "_mgt_orchestrator"
+ORCHESTRATOR_DIRECTORY = "_directory"
 
 
 class OrchestratedAgent(ResilientAgent):
@@ -375,6 +376,7 @@ class OrchestrationComputation(MessagePassingComputation):
         self.logger.info("RunStabilization msg from %s : %s at %s", sender, msg, t)
         assert hasattr(self.agent, 'stabilization_comp'), \
             f'{self.agent.__class__.name} does not have a stabilization_comp attribute'
+        self.agent.add_computation(self.agent.stabilization_comp)
         self.agent.run([self.agent.stabilization_comp.name])
 
     def on_computation_value_changed(self, computation: str, value, cost, cycle):
