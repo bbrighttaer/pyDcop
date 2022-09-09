@@ -349,6 +349,8 @@ def solution_cost(relations, variables, assignment, infinity):
         except NameError as ne:
             raise ValueError('Cannot compute solution cost : incomplete '
                              'assignment ' + str(ne))
+        except OverflowError:
+            r_cost = infinity
         # logging.debug('Cost for relation %s : %s ', r.name, r_cost)
         if r_cost != infinity:
             cost_soft += r_cost

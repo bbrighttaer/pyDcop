@@ -106,7 +106,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         super(DIGCA, self).on_start()
         self.logger.debug(f'On start of {self.name}')
         # make a first connect call on startup
-        # self._connect()
+        self._connect()
 
         # make subsequent (repeated) connect calls in `self.connect_interval` seconds
         self.add_periodic_action(self.connect_interval, self._connect)
@@ -174,7 +174,10 @@ class DIGCA(DynamicGraphConstructionComputation):
         return random.choice(self.announce_response_list)
 
     def _receive_announce(self, sender: str, msg: Announce):
-        if self.state == State.INACTIVE and self._phi(msg.agent_id) and len(self.neighbors) < 3:  # and self._has_constraint_with(msg.comps):
+        if self.state == State.INACTIVE \
+                and self._phi(msg.agent_id) \
+                and self._has_constraint_with(msg.comps):
+                # and len(self.neighbors) < 3:
             self.logger.debug(f'Sending announce response to {msg.agent_id}')
 
             # construct announce response msg

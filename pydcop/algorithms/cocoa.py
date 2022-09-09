@@ -163,7 +163,11 @@ class CoCoA(VariableComputation):
 
     def _calc_cost(self, constraint, cost_map, d1, i, var1, var2):
         for j, d2 in enumerate(var2.domain.values):
-            cost_map[i, j] = constraint(**{var1.name: d1, var2.name: d2})
+            try:
+                cost_map[i, j] = constraint(**{var1.name: d1, var2.name: d2})
+            except Exception as e:
+                self.logger.error(f'Error calculating cost of inquiry message: {str(e)}, var1 = {var1}, var2={var2}')
+                cost_map[i, j] = 0
 
     @register(CoCoAMessage.COST_MESSAGE)
     def _on_cost_message(self, variable_name: str, recv_msg: CoCoAMessage, t: int):
@@ -300,8 +304,11 @@ class CoCoA(VariableComputation):
             The cost and value as a tuple
         """
         cost = 0
-        for constraint in self.computation_def.node.constraints:
-            cost += constraint(**{var: var_values[var] for var in constraint.scope_names})
+        try:
+            for constraint in self.computation_def.node.constraints:
+                cost += constraint(**{var: var_values[var] for var in constraint.scope_names})
+        except Exception as e:
+            self.logger.error(f'Error calculating cost: {e} for {var_values}')
         value = var_values[self.name]
         return cost, value
 
