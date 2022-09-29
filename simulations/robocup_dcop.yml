@@ -1,0 +1,134 @@
+name: robocup-2d-sim
+objective: min
+
+domains:
+  goal_keeper:
+    values: [0, 1, 2, 3]
+  defender:
+    values: [0, 1, 2, 3, 4]
+  attacker:
+    values: [1, 2, 3, 4, 5, 6]
+
+variables:
+  var1:
+    domain: goal_keeper
+  var2:
+    domain: defender
+  var3:
+    domain: defender
+  var4:
+    domain: defender
+  var5:
+    domain: defender
+  var6:
+    domain: defender
+  var7:
+    domain: attacker
+  var8:
+    domain: attacker
+  var9:
+    domain: attacker
+  var10:
+    domain: attacker
+  var11:
+    domain: attacker
+
+constraints:
+  c1:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var1, var3)
+  c2:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var1, var5)
+  c3:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var1, var4)
+  c4:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var1, var2)
+  c5:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var1, var6)
+  c6:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var3, var5)
+  c7:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var3, var7)
+  c8:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var3, var10)
+  c9:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var5, var10)
+  c10:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var5, var6)
+  c11:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var5, var4)
+  c12:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var4, var6)
+  c13:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var4, var8)
+  c14:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var4, var2)
+  c15:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var6, var10)
+  c16:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var6, var8)
+  c17:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var6, var9)
+  c18:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var10, var7)
+  c19:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var10, var9)
+  c20:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var10, var8)
+  c21:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var8, var9)
+  c22:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var8, var11)
+  c23:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var7, var9)
+  c24:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var11, var9)
+
+agents: [a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11]
