@@ -183,7 +183,7 @@ from pydcop.commands._utils import (
 )
 from pydcop.dcop.yamldcop import load_dcop_from_file
 from pydcop.distribution.yamlformat import load_dist_from_file
-from pydcop.robocup.robocup_run import run_local_thread_dcop, run_local_process_dcop
+from pydcop.fmddcop.fmddcop_run import run_local_thread_dcop, run_local_process_dcop
 
 logger = logging.getLogger("pydcop.cli.run_fmddcop")
 

@@ -7,12 +7,23 @@ alg_params = [
     AlgoParameterDef("learning_rate", "float", default_value=0.01),
 ]
 
+Action = int
+
 
 def build_computation(comp_def: ComputationDef):
     return FMDDCOP(comp_def)
 
 
-class FMDDCOP(VariableComputation):
+class ModelFreeDynamicDCOP(VariableComputation):
+
+    def set_observation(self, obs: dict):
+        ...
+
+    def resolve_decision_variable(self) -> Action:
+        ...
+
+
+class FMDDCOP(ModelFreeDynamicDCOP):
 
     def __init__(self, comp_def: ComputationDef):
         super(FMDDCOP, self).__init__(comp_def.node.variable, comp_def)
