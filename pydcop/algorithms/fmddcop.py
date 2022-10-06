@@ -16,11 +16,17 @@ def build_computation(comp_def: ComputationDef):
 
 class ModelFreeDynamicDCOP(VariableComputation):
 
+    def __init__(self, *args, **kwargs):
+        super(ModelFreeDynamicDCOP, self).__init__(*args, **kwargs)
+        self.coordination_constraint_cb = None
+        self.unary_constraint_cb = None
+
     def set_observation(self, obs: dict):
-        ...
+        self.logger.debug(f'Received observation: {obs}')
 
     def resolve_decision_variable(self) -> Action:
-        ...
+        self.logger.debug(f'Resolving value of decision variable')
+        return -1
 
 
 class FMDDCOP(ModelFreeDynamicDCOP):
