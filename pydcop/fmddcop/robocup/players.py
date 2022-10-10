@@ -24,7 +24,7 @@ class Player(Agent):
         """
 
         # DEBUG:  tells us if a thread dies
-        if not self.__think_thread.is_alive() or not self.__msg_thread.is_alive():
+        if not self._think_thread.is_alive() or not self._msg_thread.is_alive():
             raise Exception("A thread died.")
 
         # take places on the field by uniform number
@@ -79,8 +79,11 @@ class Player(Agent):
         self.logger.debug('In decision loop')
 
         # set observation
+        observation = self.wm.get_current_observation()
+        self._computation.set_observation(observation)
 
         # plan and retrieve action
+        self.default_action()  # TODO: temporary action
 
         # execute action
 

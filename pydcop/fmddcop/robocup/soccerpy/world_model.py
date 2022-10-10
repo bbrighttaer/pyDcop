@@ -330,7 +330,20 @@ class WorldModel:
         """
         Tells us whether it's play time
         """
-        return self.play_mode == WorldModel.PlayModes.PLAY_ON or self.play_mode == WorldModel.PlayModes.KICK_OFF_L or self.play_mode == WorldModel.PlayModes.KICK_OFF_R or self.play_mode == WorldModel.PlayModes.KICK_IN_L or self.play_mode == WorldModel.PlayModes.KICK_IN_R or self.play_mode == WorldModel.PlayModes.FREE_KICK_L or self.play_mode == WorldModel.PlayModes.FREE_KICK_R or self.play_mode == WorldModel.PlayModes.CORNER_KICK_L or self.play_mode == WorldModel.PlayModes.CORNER_KICK_R or self.play_mode == WorldModel.PlayModes.GOAL_KICK_L or self.play_mode == WorldModel.PlayModes.GOAL_KICK_R or self.play_mode == WorldModel.PlayModes.DROP_BALL or self.play_mode == WorldModel.PlayModes.OFFSIDE_L or self.play_mode == WorldModel.PlayModes.OFFSIDE_R
+        return self.play_mode == WorldModel.PlayModes.PLAY_ON \
+               or self.play_mode == WorldModel.PlayModes.KICK_OFF_L \
+               or self.play_mode == WorldModel.PlayModes.KICK_OFF_R \
+               or self.play_mode == WorldModel.PlayModes.KICK_IN_L \
+               or self.play_mode == WorldModel.PlayModes.KICK_IN_R \
+               or self.play_mode == WorldModel.PlayModes.FREE_KICK_L \
+               or self.play_mode == WorldModel.PlayModes.FREE_KICK_R \
+               or self.play_mode == WorldModel.PlayModes.CORNER_KICK_L \
+               or self.play_mode == WorldModel.PlayModes.CORNER_KICK_R \
+               or self.play_mode == WorldModel.PlayModes.GOAL_KICK_L \
+               or self.play_mode == WorldModel.PlayModes.GOAL_KICK_R \
+               or self.play_mode == WorldModel.PlayModes.DROP_BALL \
+               or self.play_mode == WorldModel.PlayModes.OFFSIDE_L \
+               or self.play_mode == WorldModel.PlayModes.OFFSIDE_R
 
     def is_before_kick_off(self):
         """
@@ -660,6 +673,27 @@ class WorldModel:
         """
 
         self.ah.turn(obj.direction)
+
+    def get_current_observation(self):
+        return {
+            'dist_to_own_goal_post': 'val1',
+            'angle_of_own_goal_post': 'val2',
+            'dist_to_ball': 0,
+            'angle_of_ball': 0,
+            'dist_to_nearest_mate': 0,
+            'angle_to_nearest_mate': 0,
+            'dist_to_nearest_opp': 0,
+            'angle_of_nearest_opp': 0,
+            'is_path_clear_for_ball': 0,
+            'is_ball_owned': 0,
+            'is_ball_opp_owned': 0,
+            'is_ball_kickable': 0,
+            'dist_to_opp_goal_post': 0,
+            'angle_to_opp_goal_post': 0,
+            'stamina': 0,
+            'speed': 0,
+        }
+
 
 class ServerParameters:
     """
