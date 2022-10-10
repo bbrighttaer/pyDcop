@@ -59,7 +59,7 @@ from itertools import combinations
 from pulp.constants import LpBinary, LpMinimize, LpStatusOptimal
 from pulp.pulp import LpVariable, LpProblem, lpSum, value, \
     LpAffineExpression
-from pulp.solvers import GLPK_CMD
+from pulp.apis import GLPK_CMD
 
 from pydcop.computations_graph.objects import ComputationGraph, Link, \
     ComputationNode

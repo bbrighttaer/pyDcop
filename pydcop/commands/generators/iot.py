@@ -46,7 +46,7 @@ from collections import defaultdict
 import yaml
 from pulp.constants import LpBinary, LpMinimize, LpStatusOptimal
 from pulp.pulp import LpVariable, LpProblem, lpSum, value, LpAffineExpression
-from pulp.solvers import GLPK_CMD
+from pulp.apis import GLPK_CMD
 
 from pydcop.algorithms import load_algorithm_module
 from pydcop.computations_graph.factor_graph import (
