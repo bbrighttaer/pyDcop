@@ -4,6 +4,7 @@ from pydcop.algorithms.fmddcop import ModelFreeDynamicDCOP
 from pydcop.fmddcop.robocup.soccerpy.agent import Agent
 from pydcop.fmddcop.robocup.soccerpy.world_model import WorldModel
 
+INFINITY = 100.0
 
 class Player(Agent):
 
@@ -36,28 +37,7 @@ class Player(Agent):
             if self.wm.side == WorldModel.SIDE_R:
                 side_mod = -1
 
-            if self.wm.uniform_number == 1:
-                self.wm.teleport_to_point((-5 * side_mod, 30))
-            elif self.wm.uniform_number == 2:
-                self.wm.teleport_to_point((-40 * side_mod, 15))
-            elif self.wm.uniform_number == 3:
-                self.wm.teleport_to_point((-40 * side_mod, 00))
-            elif self.wm.uniform_number == 4:
-                self.wm.teleport_to_point((-40 * side_mod, -15))
-            elif self.wm.uniform_number == 5:
-                self.wm.teleport_to_point((-5 * side_mod, -30))
-            elif self.wm.uniform_number == 6:
-                self.wm.teleport_to_point((-20 * side_mod, 20))
-            elif self.wm.uniform_number == 7:
-                self.wm.teleport_to_point((-20 * side_mod, 0))
-            elif self.wm.uniform_number == 8:
-                self.wm.teleport_to_point((-20 * side_mod, -20))
-            elif self.wm.uniform_number == 9:
-                self.wm.teleport_to_point((-10 * side_mod, 0))
-            elif self.wm.uniform_number == 10:
-                self.wm.teleport_to_point((-10 * side_mod, 20))
-            elif self.wm.uniform_number == 11:
-                self.wm.teleport_to_point((-10 * side_mod, -20))
+            self.set_433_formation(side_mod)
 
             self.in_kick_off_formation = True
 
@@ -75,17 +55,103 @@ class Player(Agent):
             # The main decision loop
             return self.decision_loop()
 
+    def set_433_formation(self, side_mod):
+        # goalie
+        if self.wm.uniform_number == 1:
+            self.wm.teleport_to_point((-50 * side_mod, 0))
+
+        # defenders
+        elif self.wm.uniform_number == 2:
+            self.wm.teleport_to_point((-40 * side_mod, 25))
+        elif self.wm.uniform_number == 3:
+            self.wm.teleport_to_point((-40 * side_mod, -25))
+        elif self.wm.uniform_number == 4:
+            self.wm.teleport_to_point((-40 * side_mod, 12))
+        elif self.wm.uniform_number == 5:
+            self.wm.teleport_to_point((-40 * side_mod, -12))
+
+        # midfielder
+        elif self.wm.uniform_number == 6:
+            self.wm.teleport_to_point((-30 * side_mod, 0))
+        # midfielders
+        elif self.wm.uniform_number == 10:
+            self.wm.teleport_to_point((-20 * side_mod, -15))
+        elif self.wm.uniform_number == 8:
+            self.wm.teleport_to_point((-20 * side_mod, 15))
+
+        # forwards
+        elif self.wm.uniform_number == 7:
+            self.wm.teleport_to_point((-10 * side_mod, -25))
+        elif self.wm.uniform_number == 9:
+            self.wm.teleport_to_point((-5 * side_mod, 0))
+        elif self.wm.uniform_number == 11:
+            self.wm.teleport_to_point((-10 * side_mod, 25))
+
     def decision_loop(self):
         self.logger.debug('In decision loop')
 
         # set observation
-        observation = self.wm.get_current_observation()
+        observation = self.get_current_observation()
         self._computation.set_observation(observation)
 
         # plan and retrieve action
         self.default_action()  # TODO: temporary action
 
         # execute action
+
+    def get_current_observation(self):
+        nearest_teammate = self.wm.get_nearest_teammate()
+        nearest_opponent = self.wm.get_nearest_enemy()
+
+        return {
+            'dist_to_own_goal_post': self.wm.get_distance_to_point(self.own_goal_pos),
+
+            'angle_of_own_goal_post': self.wm.get_angle_to_point(self.own_goal_pos),
+
+            'dist_to_ball': self.wm.get_distance_to_point(
+                self.wm.get_object_absolute_coords(self.wm.ball)
+            ) if self.wm.ball else 100,
+
+            'angle_of_ball': self.wm.get_angle_to_point(
+                self.wm.get_object_absolute_coords(self.wm.ball)
+            ) if self.wm.ball else 180,
+
+            'dist_to_nearest_mate': self.wm.get_distance_to_point(
+                self.wm.get_object_absolute_coords(nearest_teammate)
+            ) if nearest_teammate else 100,
+
+            'angle_to_nearest_mate': self.wm.get_angle_to_point(
+                self.wm.get_object_absolute_coords(nearest_teammate)
+            ) if nearest_teammate else 180,
+
+            'dist_to_nearest_opp': self.wm.get_distance_to_point(
+                self.wm.get_object_absolute_coords(nearest_opponent)
+            ) if nearest_opponent else 100,
+
+            'angle_of_nearest_opp': self.wm.get_angle_to_point(
+                self.wm.get_object_absolute_coords(nearest_opponent)
+            ) if nearest_opponent else 180,
+
+            'is_path_clear_for_ball': self.is_clear(
+                self.wm.get_object_absolute_coords(self.wm.ball)
+            ) if self.wm.ball else False,
+
+            'is_ball_owned': self.wm.is_ball_owned_by_us() if self.wm.ball else False,
+
+            'is_ball_opp_owned': self.wm.is_ball_owned_by_enemy() if self.wm.ball else False,
+
+            'is_ball_kickable': self.wm.is_ball_kickable(),
+
+            'dist_to_opp_goal_post': self.wm.get_distance_to_point(self.enemy_goal_pos),
+
+            'angle_to_opp_goal_post': self.wm.get_angle_to_point(self.enemy_goal_pos),
+
+            'stamina': self.wm.get_stamina(),
+
+            'speed': self.wm.speed_amount,
+
+            'speed_direction': self.wm.speed_direction,
+        }
 
     def coordination_constraint(self, *args, **kwargs):
         ...

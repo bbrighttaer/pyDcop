@@ -674,26 +674,6 @@ class WorldModel:
 
         self.ah.turn(obj.direction)
 
-    def get_current_observation(self):
-        return {
-            'dist_to_own_goal_post': 'val1',
-            'angle_of_own_goal_post': 'val2',
-            'dist_to_ball': 0,
-            'angle_of_ball': 0,
-            'dist_to_nearest_mate': 0,
-            'angle_to_nearest_mate': 0,
-            'dist_to_nearest_opp': 0,
-            'angle_of_nearest_opp': 0,
-            'is_path_clear_for_ball': 0,
-            'is_ball_owned': 0,
-            'is_ball_opp_owned': 0,
-            'is_ball_kickable': 0,
-            'dist_to_opp_goal_post': 0,
-            'angle_to_opp_goal_post': 0,
-            'stamina': 0,
-            'speed': 0,
-        }
-
 
 class ServerParameters:
     """
