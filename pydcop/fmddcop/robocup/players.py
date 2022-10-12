@@ -95,7 +95,8 @@ class Player(Agent):
         self._computation.set_observation(observation)
 
         # plan and retrieve action
-        self.default_action()  # TODO: temporary action
+        # self.default_action()  # TODO: temporary action
+        val = self._computation.resolve_decision_variable()
 
         # execute action
 
@@ -132,15 +133,15 @@ class Player(Agent):
                 self.wm.get_object_absolute_coords(nearest_opponent)
             ) if nearest_opponent else 180,
 
-            'is_path_clear_for_ball': self.is_clear(
+            'is_path_clear_for_ball': int(self.is_clear(
                 self.wm.get_object_absolute_coords(self.wm.ball)
-            ) if self.wm.ball else False,
+            ) if self.wm.ball else False),
 
-            'is_ball_owned': self.wm.is_ball_owned_by_us() if self.wm.ball else False,
+            'is_ball_owned': int(self.wm.is_ball_owned_by_us() if self.wm.ball else False),
 
-            'is_ball_opp_owned': self.wm.is_ball_owned_by_enemy() if self.wm.ball else False,
+            'is_ball_opp_owned': int(self.wm.is_ball_owned_by_enemy() if self.wm.ball else False),
 
-            'is_ball_kickable': self.wm.is_ball_kickable(),
+            'is_ball_kickable': int(self.wm.is_ball_kickable()),
 
             'dist_to_opp_goal_post': self.wm.get_distance_to_point(self.enemy_goal_pos),
 
