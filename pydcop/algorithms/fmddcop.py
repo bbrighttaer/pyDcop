@@ -1,7 +1,7 @@
 import numpy as np
 
 from pydcop.algorithms import AlgoParameterDef, ComputationDef
-from pydcop.infrastructure.computations import VariableComputation
+from pydcop.infrastructure.computations import VariableComputation, message_type, register
 
 GRAPH_TYPE = "constraints_hypergraph"
 MSG_PRIORITY = 1
@@ -10,6 +10,9 @@ alg_params = [
 ]
 
 Action = int
+
+CoordinationMessage = message_type('coordination_msg', fields=[])
+CoordinationMessageResp = message_type('coordination_msg_resp', fields=['x', 'y'])
 
 
 def build_computation(comp_def: ComputationDef):
@@ -41,11 +44,6 @@ class ModelFreeDynamicDCOP(VariableComputation):
         return -1
 
 
-def _gaussian_rbf(r):
-    eps = 0.1
-    return np.exp(-(eps * r)**2)
-
-
 class FMDDCOP(ModelFreeDynamicDCOP):
 
     def __init__(self, comp_def: ComputationDef):
@@ -53,6 +51,14 @@ class FMDDCOP(ModelFreeDynamicDCOP):
         self._domain = comp_def.node.variable.domain
         self._parameters = None
         self._set_observation_cb = self._initialize_parameters
+
+    @register('coordination_msg')
+    def _on_coordination_msg(self, variable_name: str, recv_msg: CoordinationMessage, t: int):
+        self.logger.debug(f'Received coordination message')
+
+    @register('coordination_msg_resp')
+    def _on_coordination_msg_resp(self, variable_name: str, recv_msg: CoordinationMessageResp, t: int):
+        self.logger.debug(f'Received coordination response message')
 
     def _initialize_parameters(self, obs):
         if self._parameters is None:

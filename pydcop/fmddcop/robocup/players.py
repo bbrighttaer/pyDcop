@@ -1,10 +1,13 @@
 import logging
+from typing import Union
 
 from pydcop.algorithms.fmddcop import ModelFreeDynamicDCOP
 from pydcop.fmddcop.robocup.soccerpy.agent import Agent
 from pydcop.fmddcop.robocup.soccerpy.world_model import WorldModel
+from pydcop.fmddcop.math import math
 
 INFINITY = 100.0
+
 
 class Player(Agent):
 
@@ -17,6 +20,9 @@ class Player(Agent):
         # set constraint callbacks of the computation/algorithm
         self._computation.coordination_constraint_cb = self.coordination_constraint
         self._computation.unary_constraint_cb = self.unary_constraint
+
+    def get_position(self):
+        return self.wm.abs_coords
 
     def think(self):
         """
@@ -111,27 +117,27 @@ class Player(Agent):
 
             'dist_to_ball': self.wm.get_distance_to_point(
                 self.wm.get_object_absolute_coords(self.wm.ball)
-            ) if self.wm.ball else 100,
+            ) if self.wm.ball else 0,
 
             'angle_of_ball': self.wm.get_angle_to_point(
                 self.wm.get_object_absolute_coords(self.wm.ball)
-            ) if self.wm.ball else 180,
+            ) if self.wm.ball else 0,
 
             'dist_to_nearest_mate': self.wm.get_distance_to_point(
                 self.wm.get_object_absolute_coords(nearest_teammate)
-            ) if nearest_teammate else 100,
+            ) if nearest_teammate else 0,
 
             'angle_to_nearest_mate': self.wm.get_angle_to_point(
                 self.wm.get_object_absolute_coords(nearest_teammate)
-            ) if nearest_teammate else 180,
+            ) if nearest_teammate else 0,
 
             'dist_to_nearest_opp': self.wm.get_distance_to_point(
                 self.wm.get_object_absolute_coords(nearest_opponent)
-            ) if nearest_opponent else 100,
+            ) if nearest_opponent else 0,
 
             'angle_of_nearest_opp': self.wm.get_angle_to_point(
                 self.wm.get_object_absolute_coords(nearest_opponent)
-            ) if nearest_opponent else 180,
+            ) if nearest_opponent else 0,
 
             'is_path_clear_for_ball': int(self.is_clear(
                 self.wm.get_object_absolute_coords(self.wm.ball)
@@ -326,7 +332,16 @@ class Player(Agent):
 class Goalie(Player):
 
     def unary_constraint(self, *args, **kwargs):
-        ...
+        p = kwargs['is_ball_owned']
+        val = math.gaussian_rbf(kwargs['angle_of_ball']) + p * (
+            math.gaussian_rbf(abs(kwargs['dist_to_own_goal_post'] - 10 if p else 0))
+        ) + (1 - p) * (
+            math.gaussian_rbf(kwargs['dist_to_own_goal_post'] if p else 0)
+            + math.gaussian_rbf(kwargs['dist_to_ball'])
+            + math.gaussian_rbf(kwargs['dist_to_nearest_opp'])
+            + math.gaussian_rbf(kwargs['angle_of_nearest_opp'])
+        )
+        return val
 
     # if enemy has the ball, and not too far move towards it
     def shall_move_to_ball(self):
@@ -340,13 +355,32 @@ class Goalie(Player):
 class Defender(Player):
 
     def unary_constraint(self, *args, **kwargs):
-        ...
+        p = kwargs['is_ball_owned']
+        val = math.gaussian_rbf(kwargs['angle_of_ball']) + p * (
+            math.gaussian_rbf(abs(kwargs['dist_to_own_goal_post'] - 25 if p else 0))
+        ) + (1 - p) * (
+                      math.gaussian_rbf(kwargs['dist_to_own_goal_post'] if p else 0)
+                      + math.gaussian_rbf(kwargs['dist_to_ball'])
+                      + math.gaussian_rbf(kwargs['dist_to_nearest_opp'])
+                      + math.gaussian_rbf(kwargs['angle_of_nearest_opp'])
+              )
+        return val
 
 
 class Attacker(Player):
 
     def unary_constraint(self, *args, **kwargs):
-        ...
+        p = kwargs['is_ball_owned']
+        val = math.gaussian_rbf(kwargs['angle_of_ball']) + p * (
+            math.gaussian_rbf(abs(kwargs['dist_to_own_goal_post'] - 30 if p else 0))
+            + math.gaussian_rbf(kwargs['angle_to_opp_goal_post'])
+        ) + (1 - p) * (
+                      math.gaussian_rbf(kwargs['dist_to_own_goal_post'] if p else 0)
+                      + math.gaussian_rbf(kwargs['dist_to_ball'])
+                      + math.gaussian_rbf(kwargs['dist_to_nearest_opp'])
+                      + math.gaussian_rbf(kwargs['angle_of_nearest_opp'])
+              )
+        return val
 
     # dribble: turn body, kick, then run towards ball
     def dribble(self):
