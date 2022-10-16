@@ -11,8 +11,8 @@ alg_params = [
 
 Action = int
 
-CoordinationMessage = message_type('coordination_msg', fields=[])
-CoordinationMessageResp = message_type('coordination_msg_resp', fields=['x', 'y'])
+CoordinationMsg = message_type('coordination_msg', fields=[])
+CoordinationMsgResp = message_type('coordination_msg_resp', fields=['x', 'y'])
 
 
 def build_computation(comp_def: ComputationDef):
@@ -53,11 +53,11 @@ class FMDDCOP(ModelFreeDynamicDCOP):
         self._set_observation_cb = self._initialize_parameters
 
     @register('coordination_msg')
-    def _on_coordination_msg(self, variable_name: str, recv_msg: CoordinationMessage, t: int):
+    def _on_coordination_msg(self, variable_name: str, recv_msg: CoordinationMsg, t: int):
         self.logger.debug(f'Received coordination message')
 
     @register('coordination_msg_resp')
-    def _on_coordination_msg_resp(self, variable_name: str, recv_msg: CoordinationMessageResp, t: int):
+    def _on_coordination_msg_resp(self, variable_name: str, recv_msg: CoordinationMsgResp, t: int):
         self.logger.debug(f'Received coordination response message')
 
     def _initialize_parameters(self, obs):
