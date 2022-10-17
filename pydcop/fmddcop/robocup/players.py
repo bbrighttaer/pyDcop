@@ -1,5 +1,4 @@
 import logging
-from typing import Union
 
 from pydcop.algorithms.fmddcop import ModelFreeDynamicDCOP
 from pydcop.fmddcop.robocup.soccerpy.agent import Agent
@@ -13,6 +12,7 @@ class Player(Agent):
 
     def __init__(self, computation: ModelFreeDynamicDCOP):
         super(Player, self).__init__()
+        self.initial_pos = None
         self._computation: ModelFreeDynamicDCOP = computation
 
         self.logger = logging.getLogger(f'player-{self._computation.name}')
@@ -20,6 +20,12 @@ class Player(Agent):
         # set constraint callbacks of the computation/algorithm
         self._computation.coordination_constraint_cb = self.coordination_constraint
         self._computation.unary_constraint_cb = self.unary_constraint
+        self._computation.coordination_data_cb = self.get_coordination_data
+
+    def get_coordination_data(self):
+        return {
+            'position': self.get_position(),
+        }
 
     def get_position(self):
         return self.wm.abs_coords
@@ -64,34 +70,45 @@ class Player(Agent):
     def set_433_formation(self, side_mod):
         # goalie
         if self.wm.uniform_number == 1:
-            self.wm.teleport_to_point((-50 * side_mod, 0))
+            self.initial_pos = (-50 * side_mod, 0)
+            self.wm.teleport_to_point(self.initial_pos)
 
         # defenders
         elif self.wm.uniform_number == 2:
-            self.wm.teleport_to_point((-40 * side_mod, 25))
+            self.initial_pos = (-40 * side_mod, 25)
+            self.wm.teleport_to_point(self.initial_pos)
         elif self.wm.uniform_number == 3:
-            self.wm.teleport_to_point((-40 * side_mod, -25))
+            self.initial_pos = (-40 * side_mod, -25)
+            self.wm.teleport_to_point(self.initial_pos)
         elif self.wm.uniform_number == 4:
-            self.wm.teleport_to_point((-40 * side_mod, 12))
+            self.initial_pos = (-40 * side_mod, 12)
+            self.wm.teleport_to_point(self.initial_pos)
         elif self.wm.uniform_number == 5:
-            self.wm.teleport_to_point((-40 * side_mod, -12))
+            self.initial_pos = (-40 * side_mod, -12)
+            self.wm.teleport_to_point(self.initial_pos)
 
         # midfielder
         elif self.wm.uniform_number == 6:
-            self.wm.teleport_to_point((-30 * side_mod, 0))
+            self.initial_pos = (-30 * side_mod, 0)
+            self.wm.teleport_to_point(self.initial_pos)
         # midfielders
         elif self.wm.uniform_number == 10:
-            self.wm.teleport_to_point((-20 * side_mod, -15))
+            self.initial_pos = (-20 * side_mod, -15)
+            self.wm.teleport_to_point(self.initial_pos)
         elif self.wm.uniform_number == 8:
-            self.wm.teleport_to_point((-20 * side_mod, 15))
+            self.initial_pos = (-20 * side_mod, 15)
+            self.wm.teleport_to_point(self.initial_pos)
 
         # forwards
         elif self.wm.uniform_number == 7:
-            self.wm.teleport_to_point((-10 * side_mod, -25))
+            self.initial_pos = (-10 * side_mod, -25)
+            self.wm.teleport_to_point(self.initial_pos)
         elif self.wm.uniform_number == 9:
-            self.wm.teleport_to_point((-5 * side_mod, 0))
+            self.initial_pos = (-5 * side_mod, 0)
+            self.wm.teleport_to_point(self.initial_pos)
         elif self.wm.uniform_number == 11:
-            self.wm.teleport_to_point((-10 * side_mod, 25))
+            self.initial_pos = (-10 * side_mod, 25)
+            self.wm.teleport_to_point(self.initial_pos)
 
     def decision_loop(self):
         self.logger.debug('In decision loop')
@@ -102,9 +119,23 @@ class Player(Agent):
 
         # plan and retrieve action
         # self.default_action()  # TODO: temporary action
-        val = self._computation.resolve_decision_variable()
+        action = self._computation.resolve_decision_variable()
 
         # execute action
+        if action == 0:
+            self.stay_back()
+        elif action == 1:
+            self.passes()
+        elif action == 2:
+            self.move_to_ball()
+        elif action == 3:
+            self.move_to_defend()
+        elif action == 4:
+            self.dribble()
+        elif action == 5:
+            self.shoot()
+        elif action == 6:
+            self.move_to_enemy_goalpos()
 
     def get_current_observation(self):
         nearest_teammate = self.wm.get_nearest_teammate()
@@ -153,7 +184,7 @@ class Player(Agent):
 
             'angle_to_opp_goal_post': self.wm.get_angle_to_point(self.enemy_goal_pos),
 
-            'stamina': self.wm.get_stamina(),
+            # 'stamina': self.wm.get_stamina(),
 
             'speed': self.wm.speed_amount,
 
@@ -161,10 +192,10 @@ class Player(Agent):
         }
 
     def coordination_constraint(self, *args, **kwargs):
-        ...
+        return 0
 
     def unary_constraint(self, *args, **kwargs):
-        ...
+        return 0
 
     # check if ball is close to self
     def ball_close(self):
@@ -328,6 +359,10 @@ class Player(Agent):
     def goalpos_close(self):
         return self.wm.get_distance_to_point(self.enemy_goal_pos) < 20
 
+    def stay_back(self):
+        if self.wm.get_distance_to_point(self.initial_pos) > 5:
+            self.wm.ah.move(*self.initial_pos)
+
 
 class Goalie(Player):
 
@@ -442,3 +477,4 @@ PLAYER_MAPPING = {
     10: Attacker,
     11: Attacker,
 }
+
