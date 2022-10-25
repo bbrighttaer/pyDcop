@@ -601,6 +601,8 @@ class DiscoveryComputation(MessagePassingComputation):
 
     def _on_computation_added(self, _: DiscoveryName,
                               msg: PublishComputationMessage):
+        if '_discovery_a' in self.name: # print for only agents
+            self.logger.debug(f'Registering computation: comp= {msg.computation}, agent= {msg.agent}, addr= {msg.address}')
         self.discovery.register_computation(msg.computation, msg.agent,
                                             msg.address, publish=False)
 

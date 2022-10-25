@@ -1,4 +1,5 @@
 import logging
+import time
 
 from pydcop.algorithms.fmddcop import ModelFreeDynamicDCOP
 from pydcop.fmddcop.robocup.soccerpy.agent import Agent
@@ -115,11 +116,13 @@ class Player(Agent):
 
         # set observation
         observation = self.get_current_observation()
-        self._computation.set_observation(observation)
 
         # plan and retrieve action
         # self.default_action()  # TODO: temporary action
-        action = self._computation.resolve_decision_variable()
+        start = time.perf_counter()
+        action = self._computation.resolve_decision_variable(observation)
+        duration = time.perf_counter() - start
+        self.logger.debug(f'Variable resolution time: {duration}')
 
         # execute action
         if action == 0:
@@ -137,7 +140,7 @@ class Player(Agent):
         elif action == 6:
             self.move_to_enemy_goalpos()
 
-    def get_current_observation(self):
+    def get_current_observation(self) -> dict:
         nearest_teammate = self.wm.get_nearest_teammate()
         nearest_opponent = self.wm.get_nearest_enemy()
 

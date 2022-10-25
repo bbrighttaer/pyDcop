@@ -423,6 +423,7 @@ class WorldModel:
 
         # get relative direction to point from body, since kicks are relative to
         # body direction.
+        rel_point_dir = 0
         if self.abs_body_dir is not None:
             rel_point_dir = self.abs_body_dir - abs_point_dir
 
@@ -437,7 +438,7 @@ class WorldModel:
         # difference bewteen actual aceivable power and maxpower.
         required_power = dist_ratio * self.server_parameters.maxpower
         effective_power = self.get_effective_kick_power(self.ball,
-                required_power)
+                required_power) or 0
         required_power += 1 - (effective_power / required_power)
 
         # add more power!
@@ -454,7 +455,7 @@ class WorldModel:
         """
 
         # we can't calculate if we don't have a distance to the ball
-        if ball.distance is None:
+        if ball is None or ball.distance is None:
             return
 
         # first we get effective kick power:
@@ -495,7 +496,7 @@ class WorldModel:
 
         # calculate absolute direction to point
         # subtract from absolute body direction to get relative angle
-        return self.abs_body_dir - self.angle_between_points(self.abs_coords, point)
+        return (self.abs_body_dir or 0) - self.angle_between_points(self.abs_coords, point)
 
     # Keng-added
     def turn_body_to_point(self, point):
