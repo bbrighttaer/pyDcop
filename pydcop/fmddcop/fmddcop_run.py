@@ -7,7 +7,7 @@ from pydcop.computations_graph.objects import ComputationGraph
 from pydcop.dcop.dcop import DCOP
 from pydcop.dcop.objects import AgentDef
 from pydcop.distribution.objects import Distribution
-from pydcop.fmddcop.robocup.robocup_agent_bridge import RoboCupAgent
+from pydcop.fmddcop.robocup.robocup_agent_bridge import RoboCupAgent, start_team
 from pydcop.infrastructure.communication import InProcessCommunicationLayer, HttpCommunicationLayer
 from pydcop.fmddcop.fmddcopagent import OrchestratedFMDDCOPAgent
 from pydcop.fmddcop.fmddcoporchestrator import FMDDCOPOrchestrator
@@ -23,6 +23,7 @@ def run_local_thread_dcop(algo: AlgorithmDef,
                           period=None,
                           delay=None,
                           uiport=None) -> FMDDCOPOrchestrator:
+    start_team()
     agents = dcop.agents
     comm = InProcessCommunicationLayer()
     orchestrator = FMDDCOPOrchestrator(algo, cg, distribution, comm, dcop, infinity,

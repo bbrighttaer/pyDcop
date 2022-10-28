@@ -7,6 +7,7 @@ from pydcop.fmddcop.robocup.soccerpy.world_model import WorldModel
 from pydcop.fmddcop.math import math
 
 INFINITY = 100.0
+TEAM_NAME = 'dcop-11'
 
 
 class Player(Agent):
@@ -22,6 +23,10 @@ class Player(Agent):
         self._computation.coordination_constraint_cb = self.coordination_constraint
         self._computation.unary_constraint_cb = self.unary_constraint
         self._computation.coordination_data_cb = self.get_coordination_data
+
+    def start(self):
+        self.connect('localhost', 6000, TEAM_NAME)
+        self.play()
 
     def get_coordination_data(self):
         return {
@@ -467,7 +472,7 @@ class Attacker(Player):
         return
 
 
-PLAYER_MAPPING = {
+SOCCER_PY_PLAYER_MAPPING = {
     1: Goalie,
     2: Defender,
     3: Defender,
