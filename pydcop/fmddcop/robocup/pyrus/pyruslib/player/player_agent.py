@@ -15,6 +15,7 @@ from pydcop.fmddcop.robocup.pyrus.pyruslib.player_command.player_command_support
 from pydcop.fmddcop.robocup.pyrus.pyruslib.player_command.player_command_sender import PlayerSendCommands
 from pydcop.fmddcop.robocup.pyrus.pyruslib.rcsc.server_param import ServerParam
 from pydcop.fmddcop.robocup.pyrus.pyruslib.player.debug_client import DebugClient
+from pydcop.fmddcop.robocup.robocup_agent_bridge import COMPUTATIONS
 
 TEAM_NAME = 'Pyrus-DCOP-11'
 
@@ -161,12 +162,13 @@ class PlayerAgent(SoccerAgent):
         return self._debug_client
 
     def action(self):
-        if (self.world().self_unum() is None
-                or self.world().self().unum() != self.world().self_unum()):
+        unum = self.world().self_unum()
+        computation = COMPUTATIONS.get(unum, None)
+        if unum is None or self.world().self().unum() != unum or computation is None:
             return
 
         # selects action
-        get_decision(self)
+        get_decision(self, computation)
 
         commands = self._last_body_command
         # if self.world().our_side() == SideID.RIGHT:

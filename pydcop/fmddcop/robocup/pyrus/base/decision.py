@@ -5,7 +5,7 @@ from pydcop.fmddcop.robocup.pyrus.base.bhv_kick import BhvKick
 from pydcop.fmddcop.robocup.pyrus.base.bhv_move import BhvMove
 
 
-def get_decision(agent):
+def get_decision(agent, computation):
     wm: WorldModel = agent.world()
     st = StrategyFormation().i()
     st.update(wm)

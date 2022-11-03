@@ -1,3 +1,4 @@
+from definitions import ROOT_DIR
 from pydcop.fmddcop.robocup.pyrus.pyruslib.formation.delaunay_triangulation import *
 from pydcop.fmddcop.robocup.pyrus.pyruslib.player.templates import *
 import os
@@ -14,7 +15,7 @@ class Situation(Enum):
 
 class _StrategyFormation:
     def __init__(self):
-        pwd = os.path.join(os.getcwd(), 'fmddcop/robocup/pyrus/base')
+        pwd = ROOT_DIR
         self.before_kick_off_formation: Formation = Formation(f'{pwd}/formation_dt/before_kick_off.conf')
         self.defense_formation: Formation = Formation(f'{pwd}/formation_dt/defense_formation.conf')
         self.offense_formation: Formation = Formation(f'{pwd}/formation_dt/offense_formation.conf')
