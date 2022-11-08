@@ -167,6 +167,9 @@ class PlayerAgent(SoccerAgent):
         if unum is None or self.world().self().unum() != unum or computation is None:
             return
 
+        if hasattr(self, 'set_computation'):
+            self.set_computation(computation)
+
         # selects action
         get_decision(self, computation)
 

@@ -11,7 +11,7 @@ class BhvKick:
     def __init__(self):
         pass
 
-    def execute(self, agent):
+    def execute(self, agent, computation):
         wm: WorldModel = agent.world()
         shoot_candidate: ShootAction = BhvShhotGen().generator(wm)
         if shoot_candidate:

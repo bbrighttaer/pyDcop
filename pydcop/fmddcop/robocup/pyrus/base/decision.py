@@ -16,7 +16,7 @@ def get_decision(agent, computation):
 
     # handle hooting and passing
     if wm.self().is_kickable():
-        return BhvKick().execute(agent)
+        return BhvKick().execute(agent, computation)
 
     # handle player movement
     return BhvMove().execute(agent)
