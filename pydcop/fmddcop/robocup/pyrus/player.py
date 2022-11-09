@@ -1,6 +1,7 @@
 import logging
 
 from pydcop.algorithms.fmddcop import ModelFreeDynamicDCOP
+from pydcop.fmddcop.robocup.pyrus.pyruslib.math.vector_2d import Vector2D
 from pydcop.fmddcop.robocup.pyrus.pyruslib.player.basic_client import BasicClient
 from pydcop.fmddcop.robocup.pyrus.pyruslib.player.player_agent import PlayerAgent
 
@@ -38,11 +39,19 @@ class Player(PlayerAgent):
         self._configure_computation()
 
     def coordination_constraint(self, *args, **kwargs):
-        return 0
+        cost = 0
+        self_pos = self.world().our_player(self.world().self_unum()).pos()
+        min_dist = 10
+        for k in kwargs:
+            pos = kwargs[k].data['position']
+            d = min(min_dist, self_pos.dist(Vector2D(*pos)))
+            cost += (min_dist - d)
+        return -cost
 
     def unary_constraint(self, *args, **kwargs):
         return 0
 
     def get_position(self):
-        return 0, 0
+        pos = self.world().our_player(self.world().self_unum()).pos()
+        return pos.x(), pos.y()
 

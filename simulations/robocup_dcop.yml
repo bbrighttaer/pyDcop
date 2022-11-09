@@ -130,6 +130,10 @@ constraints:
     type: intention
     source: "./robocup_constraints.py"
     function: source.coordination_constraint(var11, var9)
+  c25:
+    type: intention
+    source: "./robocup_constraints.py"
+    function: source.coordination_constraint(var11, var2)
 
 #agents: [a1, a2, a3, a4, a5]
 agents: [a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11]

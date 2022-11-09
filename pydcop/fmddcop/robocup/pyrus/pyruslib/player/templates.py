@@ -74,6 +74,8 @@ class WorldModel:
 
     def self_unum(self): ...
 
+    def get_observation(self, unum) -> dict: ...
+
 
 class ClientMode(Enum):
     offline = 0

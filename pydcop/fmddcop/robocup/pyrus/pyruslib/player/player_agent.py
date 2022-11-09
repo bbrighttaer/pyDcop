@@ -158,7 +158,7 @@ class PlayerAgent(SoccerAgent):
     def full_world(self) -> WorldModel:
         return self._full_world
 
-    def debug_client(self) ->DebugClient:
+    def debug_client(self) -> DebugClient:
         return self._debug_client
 
     def action(self):

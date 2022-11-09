@@ -349,3 +349,13 @@ class WorldModel:
 
     def self_unum(self):
         return self._self_unum
+
+    def get_observation(self, unum):
+        player = self._our_players[unum - 1]
+        return {
+            'distance_to_ball': player.dist_from_ball(),
+            'angle_from_ball': player.angle_from_ball().degree(),
+            'body_direction': player.body().degree(),
+            'neck_direction': player.neck().degree(),
+            'stamina': player.stamina(),
+        }

@@ -1,4 +1,5 @@
 from enum import Enum
+import numpy as np
 
 from pydcop.fmddcop.robocup.pyrus.pyruslib.math.geom_2d import *
 from pydcop.fmddcop.robocup.pyrus.pyruslib.player.templates import *
@@ -32,6 +33,18 @@ class KickAction:
 
     def __str__(self):
         return self.__repr__()
+
+    def get_feature_vector(self):
+        kick_type_index = {
+            KickActionType.Pass: 1,
+            KickActionType.Dribble: 2,
+        }.get(self.type, 0)
+        num_kick_types = 3
+        return [
+            self.target_ball_pos.dist(self.start_ball_pos),
+            self.start_ball_speed,
+            *np.eye(num_kick_types)[kick_type_index],
+        ]
 
 
 class ShootAction:

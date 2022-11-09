@@ -206,3 +206,6 @@ class PlayerObject(Object):
         return self.stamina_model().get_safety_dash_power(self.player_type(),
                                                           dash_power)
 
+    def angle_from_ball(self):
+        return self._angle_from_ball
+

@@ -23,10 +23,10 @@ alg_params = [
 
 Action = int
 
-Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
+Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'next_state_action', 'reward'))
 
 # message types
-CoordinationMsg = message_type('coordination_msg', fields=[])
+CoordinationMsg = message_type('coordination_msg', fields=['n_encoding'])
 CoordinationMsgResp = message_type('coordination_msg_resp', fields=['data'])
 Gain = message_type('gain', fields=['val'])
 GainRequest = message_type('gain_request', fields=[])
@@ -48,17 +48,26 @@ class ReplayMemory(object):
         return len(self.memory)
 
 
-class DQN(nn.Module):
+class ValueFunctionModel(nn.Module):
 
-    def __init__(self, input_size: int, output_size: int):
-        super(DQN, self).__init__()
-        # self.linear1 = nn.Linear(input_size, 10)
-        self.output = nn.Linear(input_size, output_size)
+    def __init__(self, num_neighbors: int, neighborhood_dim: int, action_vector_dim: int):
+        super(ValueFunctionModel, self).__init__()
+        self.linear1 = nn.Linear((num_neighbors + 1) * neighborhood_dim, neighborhood_dim)
+        self.bn = nn.BatchNorm1d(neighborhood_dim)
+        self.output = nn.Linear(neighborhood_dim + action_vector_dim, 1)
 
-    def forward(self, x):
-        # x = self.linear1(x)
-        # x = F.relu(x)
-        return self.output(x)
+    def neighborhood_encoding(self, x):
+        x = self.linear1(x)
+        if x.shape[0] == 1:
+            self.bn.eval()
+        x = self.bn(x)
+        x = F.leaky_relu(x)
+        return x
+
+    def forward(self, n_x, a_x):
+        n_x = self.neighborhood_encoding(n_x)
+        x = self.output(torch.concat([n_x, a_x], dim=1))
+        return x
 
 
 def build_computation(comp_def: ComputationDef):
@@ -83,7 +92,7 @@ class ModelFreeDynamicDCOP(VariableComputation):
     #     if callable(self._set_observation_cb):
     #         self._set_observation_cb(obs)
 
-    def resolve_decision_variable(self, obs: dict) -> Action:
+    def resolve_decision_variable(self, obs: dict, action_candidates: list, action_eval: list) -> Action:
         self._time_step += 1
         self.logger.debug(f'Resolving value of decision variable')
         return -1
@@ -99,12 +108,10 @@ class FMDDCOP(ModelFreeDynamicDCOP):
         # helpers to construct training samples
         self._hist_len = 10
         self._obs_history = deque(maxlen=self._hist_len)
-        self._value_history = deque(maxlen=self._hist_len)
-        self._util_history = deque(maxlen=self._hist_len)
 
         # model and learning props
-        self._model = None
-        self._model_target = None
+        self._model: ValueFunctionModel = None
+        self._model_target: ValueFunctionModel = None
         self._optimizer = None
         self._buffer = ReplayMemory(1000)
         self._cost_coefficient = 5
@@ -114,15 +121,15 @@ class FMDDCOP(ModelFreeDynamicDCOP):
         self._target_update = 10
         self._num_training = 0
 
-        # props for gathering neighbor data for local utility estimation
+        self._action_vector_dim = 5
+        self._obs_data_dim = 5
+        self._obs_data = {
+            var: [0.] * self._obs_data_dim for var in self.neighbors
+        }
+
+        # props for gathering neighbor data for local utility computation
         self._neighbor_data = {}
         self._coordination_data_evt = threading.Event()
-
-        # props for managing utility estimation
-        self._max_util_iter = 1
-        self._gain = float('-inf')
-        self._gain_msgs = []
-        self._expected_total_num_msgs = self._max_util_iter * len(self.neighbors) + 1
 
     def on_start(self):
         self.logger.debug('Started FMD-DCOP')
@@ -134,6 +141,9 @@ class FMDDCOP(ModelFreeDynamicDCOP):
 
     @register('coordination_msg')
     def _on_coordination_msg(self, variable_name: str, recv_msg: CoordinationMsg, t: int):
+        # update neighborhood information of sender
+        self._obs_data[variable_name] = recv_msg.n_encoding
+
         # send coordination response
         self.post_msg(
             target=variable_name,
@@ -148,164 +158,148 @@ class FMDDCOP(ModelFreeDynamicDCOP):
         if len(self.neighbors) == len(self._neighbor_data):
             self._coordination_data_evt.set()
 
-    @register('gain_request')
-    def _on_receive_gain_request(self, variable_name: str, recv_msg: GainRequest, t: int):
-        self.post_msg(
-            target=variable_name,
-            msg=Gain(self._gain),
-        )
-
-    @register('gain')
-    def _on_receive_gain(self, variable_name: str, recv_msg: Gain, t: int):
-        self._gain_msgs.append((variable_name, recv_msg.val))
-
-    def _process_gain_msg(self):
-        # wait for neighbor msgs
-        while len(self._gain_msgs) != self._expected_total_num_msgs:
-            continue
-
-        # ignore neighbors that returned None gain and find the max gain reported
-        _, self.gain = max(self._gain_msgs, key=lambda x: x[1])
-
-        # if all possible gain msgs have been received, create and store a transition
-        self._buffer.push(
-            self._obs_history.pop(),
-            self._value_history.pop(),
-            self._obs_history[-1],
-            self.gain,
-        )
-        self._gain_msgs.clear()
-
     def _set_observation(self, obs: list):
-        self._obs_history.append(obs)
+        self._obs_data[self.name] = obs
 
         # initialize trainable parameters
         if self._model is None:
-            self._initialize_parameters(obs)
+            self._initialize_parameters()
+
+        self._model.eval()
+
+        # get neighborhood encoding
+        x = torch.cat([torch.tensor(v) for v in self._obs_data.values()])
+        n_encoding = self._model.neighborhood_encoding(x.view(1, -1))
+        n_encoding = n_encoding.detach()
 
         # send coordination msg
         self.post_to_all_neighbors(
-            msg=CoordinationMsg(),
+            msg=CoordinationMsg(n_encoding=n_encoding.squeeze().tolist()),
         )
 
-    def _initialize_parameters(self, obs):
-        self._model = DQN(len(obs), len(self._domain))
-        self._model_target = DQN(len(obs), len(self._domain))
+        return n_encoding
+
+    def _initialize_parameters(self):
+        self._model = ValueFunctionModel(
+            num_neighbors=len(self.neighbors),
+            neighborhood_dim=self._obs_data_dim,
+            action_vector_dim=self._action_vector_dim,
+        )
+        self._model_target = ValueFunctionModel(
+            num_neighbors=len(self.neighbors),
+            neighborhood_dim=self._obs_data_dim,
+            action_vector_dim=self._action_vector_dim,
+        )
         self._model_target.load_state_dict(self._model.state_dict())
         self._optimizer = torch.optim.RMSprop(self._model.parameters())
 
-    def resolve_decision_variable(self, obs: dict) -> Action:
+    def resolve_decision_variable(self, obs: dict, action_candidates: list, action_eval: list) -> Action:
         self._time_step += 1
 
         obs_array = list(obs.values())
-        self._set_observation(obs_array)
-
-        # ensure observation and coordination data are ready for processing
-        self._coordination_data_evt.wait()
-        self._coordination_data_evt.clear()  # clear for next check
-
-        if len(self._obs_history) > 1:
-            # calculate utility
-            gain = self._compute_local_utility(obs)
-            self._gain_msgs.append((self.name, gain))
-
-            # request gain messages from neighbors
-            self.post_to_all_neighbors(
-                msg=GainRequest(),
-            )
-
-            self._process_gain_msg()
+        n_encoding = self._set_observation(obs_array)
 
         # select value/action for decision variable
-        val = self._select_value(state=obs_array)
+        val = self._select_value(n_encoding, action_candidates)
+
+        # cache info for creating experience later
+        self._obs_history.append((
+            list(self._obs_data.values()),  # self and neighbor data,
+            action_candidates[val],  # selected action vector,
+            action_eval[val],  # selected action's evaluation,
+        ))
+
+        # create experience if possible
+        if len(self._obs_history) > 1:
+            s, a, v = self._obs_history.popleft()
+            s_prime = list(self._obs_data.values())
+            a_prime = action_candidates[val]
+            util = self._compute_local_utility(a, a_prime, v)
+            self._buffer.push(s, a, s_prime, a_prime, util)
 
         return val
 
     def _update_value_params(self):
         pass
 
-    def _compute_local_utility(self, obs: dict):
+    def _compute_local_utility(self, a1, a2, a1_v):
+        # ensure coordination responses have been received
+        self._coordination_data_evt.wait()
+        self._coordination_data_evt.clear()
+
         # coordination constraints
         c_val = self.coordination_constraint_cb(**self._neighbor_data)
         self._neighbor_data.clear()  # reset for next collation
 
         # unary constraints
-        u_val = self.unary_constraint_cb(**obs)
+        u_val = a1_v  # self.unary_constraint_cb(**obs)
 
-        # value change cost
-        val_change_cost = 0
-        if len(self._value_history) > 1:
-            x_t_1 = self._value_history[-2]
-            x_t = self._value_history[-1]
-            val_change_cost = self._cost_coefficient * int(x_t != x_t_1)
-
-        # previous util
-        p_util = 0
-        if len(self._util_history) > 0:
-            p_util = self._util_history.pop()
+        # value change cost (compare type of actions)
+        a1 = a1[-3:]
+        a2 = a2[-3:]
+        val_change_cost = self._cost_coefficient * int(a1.index(1) != a2.index(1))
 
         # current util
         c_util = u_val + c_val - val_change_cost
 
-        # calculate gain in util
-        gain = c_util - p_util
+        return c_util
 
-        # maintain history
-        self._util_history.append(c_util)
-
-        return gain
-
-    @torch.no_grad()
-    def _select_value(self, state: list):
-        state = torch.tensor(state).reshape(1, -1)
-        val = self._model(state).max(1)[1]
+    def _select_value(self, n_encoding, action_vectors):
+        self._model.eval()
+        action_vectors = torch.tensor(action_vectors)
+        n_encoding = n_encoding.repeat(action_vectors.shape[0], 1)
+        x = torch.cat([n_encoding, action_vectors], dim=1).float()
+        val = self._model.output(x).max(0)[1]
         val = val.item()
-        self._value_history.append(val)
         return val
 
     def _train_dqn_model(self):
-        train = False
+        if self._model:
+            self._model.train()
+
+        can_train = False
         if len(self._buffer) >= self._batch_size:
-            train = True
+            can_train = True
 
-        if train:
-            # sample batch from buffer
-            transitions = self._buffer.sample(self._batch_size)
+        if can_train:
+            with torch.set_grad_enabled(True):
+                # sample batch from buffer
+                transitions = self._buffer.sample(self._batch_size)
 
-            # transpose batch of transitions to transition of batch-arrays
-            batch = Transition(*zip(*transitions))
+                # transpose batch of transitions to transition of batch-arrays
+                batch = Transition(*zip(*transitions))
 
-            state_batch = torch.tensor(batch.state)
-            action_batch = torch.tensor(batch.action).view(-1, 1)
-            reward_batch = torch.tensor(batch.reward).view(-1, 1)
-            next_state_batch = torch.tensor(batch.next_state)
+                state_batch = torch.tensor(batch.state).view(self._batch_size, -1).float()
+                action_batch = torch.tensor(batch.action).view(self._batch_size, -1).float()
+                reward_batch = torch.tensor(batch.reward).view(-1, 1).float()
+                next_state_batch = torch.tensor(batch.next_state).view(self._batch_size, -1).float()
+                next_state_action_batch = torch.tensor(batch.next_state_action).view(self._batch_size, -1).float()
 
-            # compute Q(s_t, a)
-            state_action_values = self._model(state_batch).gather(1, action_batch)
+                # compute Q(s_t, a)
+                state_action_values = self._model(state_batch, action_batch)
 
-            # compute V(s_{t+1}) for all next states
-            next_state_values = self._model_target(next_state_batch).max(1)[0].detach()
+                # compute V(s_{t+1}) for all next states
+                next_state_values = self._model_target(next_state_batch, next_state_action_batch).detach()
 
-            # compute the expected Q values
-            expected_state_action_values = (next_state_values * self._gamma) * reward_batch
+                # compute the expected Q values
+                expected_state_action_values = (next_state_values * self._gamma) * reward_batch
 
-            # compute loss
-            criterion = nn.SmoothL1Loss()
-            loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+                # compute loss
+                criterion = nn.SmoothL1Loss()
+                loss = criterion(state_action_values, expected_state_action_values)
 
-            # optimize the model
-            self._optimizer.zero_grad()
-            loss.backward()
-            for param in self._model.parameters():
-                param.grad.data.clamp_(-1, 1)
-            self._optimizer.step()
+                # optimize the model
+                self._optimizer.zero_grad()
+                loss.backward()
+                for param in self._model.parameters():
+                    param.grad.data.clamp_(-1, 1)
+                self._optimizer.step()
 
-            self._num_training += 1
+                self._num_training += 1
 
-            # update target network
-            if self._num_training % self._target_update == 0:
-                self._model_target.load_state_dict(self._model.state_dict())
+                # update target network
+                if self._num_training % self._target_update == 0:
+                    self._model_target.load_state_dict(self._model.state_dict())
 
         # schedule next training
         self._start_model_trainer()
-
