@@ -112,5 +112,5 @@ class dlog:
     def flush():
         if dlog._time is None or dlog._time.cycle() == 0:
             return
-        dlog.debug(dlog._commands)
+        # dlog.debug(dlog._commands)
         dlog._commands = ""

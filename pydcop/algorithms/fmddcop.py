@@ -31,6 +31,10 @@ CoordinationMsgResp = message_type('coordination_msg_resp', fields=['data'])
 Gain = message_type('gain', fields=['val'])
 GainRequest = message_type('gain_request', fields=[])
 
+seed = 7
+random.seed(seed)
+torch.manual_seed(seed)
+
 
 class ReplayMemory(object):
 
@@ -114,7 +118,7 @@ class FMDDCOP(ModelFreeDynamicDCOP):
         self._model_target: ValueFunctionModel = None
         self._optimizer = None
         self._buffer = ReplayMemory(1000)
-        self._cost_coefficient = 5
+        self._cost_coefficient = 1
         self._lr = 0.1
         self._batch_size = 16
         self._gamma = 0.999
@@ -249,8 +253,15 @@ class FMDDCOP(ModelFreeDynamicDCOP):
         action_vectors = torch.tensor(action_vectors)
         n_encoding = n_encoding.repeat(action_vectors.shape[0], 1)
         x = torch.cat([n_encoding, action_vectors], dim=1).float()
-        val = self._model.output(x).max(0)[1]
-        val = val.item()
+        output = self._model.output(x)
+
+        # epsilon-greedy
+        if random.random() < 0.1:
+            val = random.randint(0, len(action_vectors) - 1)
+        else:
+            val = output.max(0)[1]
+            val = val.item()
+
         return val
 
     def _train_dqn_model(self):

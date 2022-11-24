@@ -19,7 +19,7 @@ from pydcop.fmddcop.robocup.pyrus.pyruslib.math.soccer_math import *
 
 
 class SmartKick(BodyAction):
-    PRINT_DEBUG: bool = True # PRINTs IN SMARTKICK
+    PRINT_DEBUG: bool = False # PRINTs IN SMARTKICK
 
     def __init__(self, target_point: Vector2D, first_speed, first_speed_thr, max_step):
         super().__init__()

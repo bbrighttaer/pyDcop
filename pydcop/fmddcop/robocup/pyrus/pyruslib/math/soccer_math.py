@@ -226,13 +226,16 @@ def frange(start, stop=None, step=None):
         start = 0.0
     if step is None:
         step = 1.0
-    while True:
-        if step > 0 and start >= stop:
-            break
-        elif step < 0 and start <= stop:
-            break
-        yield start
-        start = start + step
+    try:
+        while True:
+            if step > 0 and start >= stop:
+                break
+            elif step < 0 and start <= stop:
+                break
+            yield start
+            start = start + step
+    except TypeError as e:
+        print(f'Error: {str(e)}')
 
 
 SERVER_EPS = 1.0e-10

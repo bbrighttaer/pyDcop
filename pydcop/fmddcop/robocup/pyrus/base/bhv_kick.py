@@ -40,7 +40,7 @@ class BhvKick:
             selected_action = action_candidates[val_index]
 
             target = selected_action.target_ball_pos
-            print(selected_action)
+            # print(selected_action)
             agent.debug_client().set_target(target)
             agent.debug_client().add_message(
                 selected_action.type.value + 'to ' + selected_action.target_ball_pos.__str__()
