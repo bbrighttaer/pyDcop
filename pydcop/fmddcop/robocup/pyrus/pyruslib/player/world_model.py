@@ -58,16 +58,16 @@ class WorldModel:
         return self._time.copy()
 
     def parse(self, message):
-        if message.find("fullstate") is not -1:
+        if message.find("fullstate") != -1:
             self.fullstate_parser(message)
             self.update()
-        if message.find("(init") is not -1:
+        if message.find("(init") != -1:
             self.self_parser(message)
         elif 0 < message.find("player_type") < 3:
             self.player_type_parser(message)
-        elif message.find("sense_body") is not -1:
+        elif message.find("sense_body") != -1:
             pass
-        elif message.find("init") is not -1:
+        elif message.find("init") != -1:
             pass
 
     def fullstate_parser(self, message):
