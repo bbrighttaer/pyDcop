@@ -55,6 +55,7 @@ from pydcop.commands import graph
 from pydcop.commands import generate
 from pydcop.commands import run
 from pydcop.commands import consolidate
+from pydcop.commands import run_fmddcop
 
 cli_timer = None
 TIMEOUT_SLACK = 40
@@ -96,6 +97,7 @@ def main():
     generate.set_parser(subparsers)
     replica_dist.set_parser(subparsers)
     run.set_parser(subparsers)
+    run_fmddcop.set_parser(subparsers)
     ddcop_run.set_parser(subparsers)
     batch.set_parser(subparsers)
     consolidate.set_parser(subparsers)

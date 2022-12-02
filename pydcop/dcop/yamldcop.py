@@ -29,7 +29,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 import pathlib
 from collections import defaultdict
-from collections import Iterable as CollectionIterable
+import collections.abc as abc
 from typing import Dict, Iterable, Union, List
 
 import yaml
@@ -80,7 +80,7 @@ def load_dcop_from_file(filenames: Union[str, Iterable[str]]):
     content = ""
     main_dir = None
 
-    if not isinstance(filenames, CollectionIterable):
+    if not isinstance(filenames, abc.Iterable):
         filenames = [filenames]
 
     for filename in filenames:
