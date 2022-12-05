@@ -49,6 +49,7 @@ from pydcop.dcop.relations import filter_assignment_dict
 from pydcop.dcop.scenario import Scenario
 from pydcop.distribution import gh_cgdp
 from pydcop.distribution.objects import Distribution
+from pydcop.envs import SimulationEnvironment
 from pydcop.infrastructure.agents import Agent, AgentException
 from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT, InProcessCommunicationLayer, \
     HttpCommunicationLayer
@@ -60,6 +61,7 @@ from pydcop.reparation.removal import _removal_candidate_agents, \
 
 ORCHESTRATOR = 'orchestrator'
 ORCHESTRATOR_MGT = '_mgt_orchestrator'
+ORCHESTRATOR_SIMULATION_ENV = '_sim_env_orchestrator'
 
 
 class Orchestrator(object):
@@ -407,7 +409,8 @@ class DynamicOrchestrator(Orchestrator):
                  collect_moment: str = 'value_change',
                  collect_period: float = None,
                  ui_port: int = None,
-                 stabilization_algorithm: str = None):
+                 stabilization_algorithm: str = None,
+                 simulation_environment: SimulationEnvironment = None):
         super(DynamicOrchestrator, self).__init__(
             algo, cg, agent_mapping, comm, dcop, infinity, collector, collect_moment, collect_period, ui_port
         )
@@ -418,6 +421,7 @@ class DynamicOrchestrator(Orchestrator):
                                     self._own_agt, self, infinity, collector=collector,
                                     collect_moment=collect_moment,
                                     collect_period=collect_period)
+        self.simulation_environment = simulation_environment
 
         self._sim_end_t = threading.Thread(target=self._end_dynamic_simulation, name='sim_end_monitor', daemon=True)
 
@@ -430,24 +434,35 @@ class DynamicOrchestrator(Orchestrator):
     def start(self):
         super(DynamicOrchestrator, self).start()
 
+        # if simulation environment is available, start it
+        if self.simulation_environment is not None:
+            self._own_agt.add_computation(
+                computation=self.simulation_environment,
+                comp_name=ORCHESTRATOR_SIMULATION_ENV,
+            )
+            self._own_agt.start()
+
     def start_replication(self, k_target: int):
         self.logger.warning(f"Replication is not supported by {self.__class__.__name__}")
 
     def run(self, scenario: Scenario = None, timeout: Optional[float] = None, **kwargs):
         self.logger.info(f"Running Dynamic Orchestrator")
 
-        self._sim_end_t.start()
+        # if no simulation environment is provided, fallback on traditional events file processing
+        if self.simulation_environment is None:
+            if timeout is not None:
+                self.logger.info('Setting timer for %s timeout', timeout)
+                self._timeout_timer = threading.Timer(timeout, self._on_timeout)
+                self._timeout_timer.daemon = True
+                self._timeout_timer.start()
+                self.mgt.ready_to_run = threading.Event()
+            else:
+                self.logger.info('Not timeout, stop with ctrl+c or on algo end ')
 
-        if timeout is not None:
-            self.logger.info('Setting timer for %s timeout', timeout)
-            self._timeout_timer = threading.Timer(timeout, self._on_timeout)
-            self._timeout_timer.daemon = True
-            self._timeout_timer.start()
-            self.mgt.ready_to_run = threading.Event()
+            self.process_scenarios(scenario)
         else:
-            self.logger.info('Not timeout, stop with ctrl+c or on algo end ')
+            self.logger.debug(f'RUN SIMULATION HERE!!!')
 
-        self.process_scenarios(scenario)
 
         self.mgt.wait_stop_agents()
         self._own_agt.clean_shutdown()

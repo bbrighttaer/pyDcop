@@ -66,6 +66,7 @@ from pydcop.infrastructure.orchestrator import (
 ORCHESTRATOR = "orchestrator"
 ORCHESTRATOR_MGT = "_mgt_orchestrator"
 ORCHESTRATOR_DIRECTORY = "_directory"
+ORCHESTRATOR_SIMULATION_ENV = '_sim_env_orchestrator'
 
 
 class OrchestratedAgent(ResilientAgent):
@@ -199,7 +200,14 @@ class DynamicOrchestratedAgent(DynamicAgent):
         self.discovery.use_directory(ORCHESTRATOR, orchestrator_address)
         self.discovery.register_agent(ORCHESTRATOR, orchestrator_address, publish=False)
         self.discovery.register_computation(
-            ORCHESTRATOR_MGT, ORCHESTRATOR, publish=False
+            computation=ORCHESTRATOR_MGT,
+            agent=ORCHESTRATOR,
+            publish=False,
+        )
+        self.discovery.register_computation(
+            computation=ORCHESTRATOR_SIMULATION_ENV,
+            agent=ORCHESTRATOR,
+            publish=False,
         )
 
         self._mgt_computation = OrchestrationComputation(self)
