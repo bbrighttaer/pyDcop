@@ -166,6 +166,9 @@ def _on_timeout(on_timeout_func):
 
 
 def _configure_logs(level: int, log_conf: str):
+    # important! clear handlers set by third-party libraries (e.g. websocket_server)
+    logging.root.handlers = []
+
     if log_conf is not None:
         if not path.exists(log_conf):
             raise ValueError(f"Could not find log configuration file {log_conf}")

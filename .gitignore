@@ -1,6 +1,7 @@
  
 **/.directory
 
+*.csv
  
 ######################################################
 # ignore for python projects 
