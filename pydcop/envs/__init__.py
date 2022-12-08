@@ -10,8 +10,9 @@ class SimulationEnvironment(MessagePassingComputation):
 
     def __init__(self, name, time_step_delay):
         super(SimulationEnvironment, self).__init__(name)
-        self._state_history: List[str] = []
+        self._state_history = []
         self.time_step_delay = time_step_delay
+        self.agents = {}
 
     def step(self):
         ...
@@ -33,6 +34,15 @@ class SimulationEnvironment(MessagePassingComputation):
         ...
 
     def remove_agent(self, agent):
+        ...
+
+    def next_time_step(self):
+        ...
+
+    def get_time_step_end_data(self, agent_id):
+        ...
+
+    def evaluate_constraint(self):
         ...
 
 

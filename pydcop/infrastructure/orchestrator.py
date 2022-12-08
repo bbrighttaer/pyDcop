@@ -464,6 +464,7 @@ class DynamicOrchestrator(Orchestrator):
             self.process_scenarios(scenario)
         else:
             self.logger.debug(f'Running scenarios from simulation environment: {self.simulation_environment.name}')
+
             # set simulation env step function as periodic action
             cb = self.agent.set_periodic_action(
                 period=self.simulation_environment.time_step_delay,
@@ -495,6 +496,14 @@ class DynamicOrchestrator(Orchestrator):
                 )
             )
 
+            # override next_timestep method
+            self.simulation_environment.next_time_step = notify_wrap(
+                self.simulation_environment.next_time_step,
+                functools.partial(
+                    self.on_sim_env_time_step_change,
+                )
+            )
+
         self.mgt.wait_stop_agents()
         self._own_agt.clean_shutdown()
         self._own_agt.join()
@@ -504,6 +513,16 @@ class DynamicOrchestrator(Orchestrator):
         self.logger.info('All Dynamic DCOP computation have finished : stop')
         self.mgt._orchestrator_stop_agents()
         self.logger.info(f'Final graph: {self._current_graph.edges.data()}')
+
+    def on_sim_env_time_step_change(self):
+        for agent in self.directory.agents_data:
+            if agent != ORCHESTRATOR:
+                self.mgt._send_mgt_msg(
+                    agt=agent,
+                    msg=SimTimeStepChanged(
+                        self.simulation_environment.get_time_step_end_data(agent)
+                    )
+                )
 
 
 ################################################################################
@@ -575,6 +594,11 @@ GraphConnectionMessage = message_type(
 # that the agent runs its stabilization algorithm
 RunStabilizationMessage = message_type(
     'run_stabilization', []
+)
+
+# SimTimeStepChange is sent by the orchestrator to all agents when the simulation environment changes its times step
+SimTimeStepChanged = message_type(
+    'sim_time_step_change', ['data']
 )
 
 

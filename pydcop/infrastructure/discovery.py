@@ -387,6 +387,10 @@ class Directory(object):
         except KeyError:
             raise UnknownAgent(agent)
 
+    @property
+    def agents_data(self):
+        return self._agents_data
+
     def register_agent(self, agent: AgentName, address: Address):
         self.logger.debug('Registering agent %s on %s', agent, address)
         self._agents_data[agent] = address

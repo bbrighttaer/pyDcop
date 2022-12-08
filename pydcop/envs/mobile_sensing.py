@@ -1,7 +1,7 @@
 import random
 import numpy as np
 
-from pydcop.envs import SimulationEnvironment, TimeStep
+from pydcop.envs import SimulationEnvironment
 
 seed = 7
 random.seed(seed)
@@ -10,7 +10,7 @@ random.seed(seed)
 class GridWorld(SimulationEnvironment):
     name = 'GridWorld'
 
-    def __init__(self, size, num_agents, num_targets, scenario):
+    def __init__(self, size, num_targets, scenario):
         super(GridWorld, self).__init__(self.name, time_step_delay=2)
         self._events_iterator = iter(scenario)
         self.grid_size = size
@@ -56,9 +56,7 @@ class GridWorld(SimulationEnvironment):
 
     def step(self):
         try:
-            self._next_time_step()
-
-            # self.logger.debug(str(self.history[-1]))
+            self.logger.debug(self.history)
 
             evt = next(self._events_iterator)
             if not evt.is_delay:
@@ -70,19 +68,51 @@ class GridWorld(SimulationEnvironment):
                     elif a.type == 'remove_agent':
                         self.logger.info('Event action: Remove agent %s ', a)
                         self.remove_agent(a.args['agent'])
+
+            self.next_time_step()
         except StopIteration:
             self.on_simulation_ended()
 
-    def _next_time_step(self):
+    def run_stabilization_computation(self, agent):
+        # get all possible positions
+        cell_ids = list(self.grid.keys())
+
+        # uniformly sample a position for this target
+        selected_cell_id = random.choice(cell_ids)
+        selected_cell = self.grid[selected_cell_id]
+
+        # create agent in the environment
+        msa = MobileSensingAgent(agent, selected_cell)
+        self.agents[msa.player_id] = msa
+
+        # add sensor to cell
+        selected_cell.add(msa)
+
+    def remove_agent(self, agent):
+        # remove agent from agents list
+        msa = self.agents.pop(agent)
+
+        # remove agent from currently occupied cell
+        cell: GridCell = msa.current_cell
+        cell.contents.pop(cell.contents.index(msa))
+
+    def next_time_step(self):
         self._current_time_step += 1
-        grid_str = str([str(v) for v in self.grid.values()])
-        self._state_history.append(str(TimeStep(self._current_time_step, state=grid_str)))
+        grid = [str(v) for v in self.grid.values()]
+        self._state_history.append((f't={str(self._current_time_step)}', grid))
 
     def _create_cells(self):
         for i in range(1, self.grid_size + 1):
             for j in range(1, self.grid_size + 1):
                 cell = GridCell(i, j)
                 self.grid[cell.cell_id] = cell
+
+    def get_time_step_end_data(self, agent_id):
+        return {
+            'current_position': None,
+            'score': None,  # score in the just ended time step
+            'agents_in_comm_range': None,
+        }
 
 
 class GridCell:
@@ -112,17 +142,19 @@ class GridCell:
         return f'{self.cell_id}: {str([str(c) for c in self.contents])}'
 
 
-class MobileSensor:
+class MobileSensingAgent:
 
-    def __init__(self, player_id):
+    def __init__(self, player_id, cell):
         super().__init__()
         self.player_id = player_id
-        self.client = None
-        self.current_position = None
+        self.current_cell = cell
         self.credibility = 5
         self.sensing_range = 1
         self.mobility_range = 2
         self.connectivity_range = 3
+
+    def __str__(self):
+        return f'Agent(id={self.player_id}, cred={self.credibility})'
 
 
 class Target:

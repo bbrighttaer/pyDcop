@@ -60,7 +60,7 @@ from pydcop.infrastructure.orchestrator import (
     RepairDoneMessage,
     ResumeMessage,
     AgentRemovedMessage,
-    SetMetricsModeMessage, RunStabilizationMessage,
+    SetMetricsModeMessage, RunStabilizationMessage, SimTimeStepChanged,
 )
 
 ORCHESTRATOR = "orchestrator"
@@ -283,6 +283,7 @@ class OrchestrationComputation(MessagePassingComputation):
             "agent_removed": self._on_stop_request,
             # When requested to run stabilization computation
             "run_stabilization": self._on_run_stabilization_computation,
+            "sim_time_step_change": self._on_simulation_time_step_change,
         }
 
     @property
@@ -386,6 +387,9 @@ class OrchestrationComputation(MessagePassingComputation):
             f'{self.agent.__class__.name} does not have a stabilization_comp attribute'
         self.agent.add_computation(self.agent.stabilization_comp)
         self.agent.run([self.agent.stabilization_comp.name])
+
+    def _on_simulation_time_step_change(self, sender: str, msg: SimTimeStepChanged, t: float):
+        self.logger.debug(f'Simulation time step changed: {msg}')
 
     def on_computation_value_changed(self, computation: str, value, cost, cycle):
         """
