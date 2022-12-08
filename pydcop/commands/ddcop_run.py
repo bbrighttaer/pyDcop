@@ -15,7 +15,7 @@ from pydcop.dcop.dcop import filter_dcop
 from pydcop.dcop.yamldcop import load_dcop_from_file, load_scenario_from_file
 from pydcop.computations_graph import dynamic_graph
 from pydcop.distribution.yamlformat import load_dist_from_file
-from pydcop.envs.mobile_sensing.mst import GridWorld
+from pydcop.envs.mobile_sensing import GridWorld
 from pydcop.infrastructure.ddcop_run import run_local_process_dcop, run_local_thread_dcop
 
 logger = logging.getLogger("pydcop.cli.ddcop_run")
@@ -191,6 +191,14 @@ def run_cmd(args, timer=None, timeout=None):
     )
     collect_t.start()
 
+    # D-DCOP environment setup
+    simulation_environment = GridWorld(
+        size=3,
+        num_agents=2,
+        num_targets=2,
+        scenario=scenario,
+    )
+
     global orchestrator
     if args.mode == "thread":
         orchestrator = run_local_thread_dcop(
@@ -203,6 +211,7 @@ def run_cmd(args, timer=None, timeout=None):
             collect_moment=args.collect_on,
             period=period,
             stabilization_algorithm=args.stabilization_algorithm,
+            sim_env=simulation_environment,
         )
     elif args.mode == "process":
 
@@ -223,13 +232,8 @@ def run_cmd(args, timer=None, timeout=None):
             collect_moment=args.collect_on,
             period=period,
             stabilization_algorithm=args.stabilization_algorithm,
+            sim_env=simulation_environment,
         )
-
-    # D-DCOP environment setup
-    orchestrator.simulation_environment = GridWorld(
-        size=3,
-        num_agents=2,
-    )
 
     orchestrator.set_error_handler(_orchestrator_error)
 

@@ -29,6 +29,9 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 
+def notify_wrap(f, cb):
 
-
-
+    def wrapped(*args, **kwargs):
+        f(*args, **kwargs)
+        cb(*args, **kwargs)
+    return wrapped

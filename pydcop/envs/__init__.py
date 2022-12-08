@@ -8,19 +8,32 @@ class SimulationEnvironment(MessagePassingComputation):
     Base class for all simulation environments used for D-DCOP
     """
 
-    def __init__(self, name):
+    def __init__(self, name, time_step_delay):
         super(SimulationEnvironment, self).__init__(name)
-        self._state_history: List[TimeStep] = []
+        self._state_history: List[str] = []
+        self.time_step_delay = time_step_delay
 
     def step(self):
         ...
 
     def display(self):
-        ...
+        self.logger.info(str(self))
 
     @property
     def history(self):
         return self._state_history
+
+    def __str__(self):
+        return str(self.history)
+
+    def on_simulation_ended(self):
+        self.logger.debug(f'Simulation ended')
+
+    def run_stabilization_computation(self, agent):
+        ...
+
+    def remove_agent(self, agent):
+        ...
 
 
 class TimeStep:
@@ -28,5 +41,9 @@ class TimeStep:
     Models a single time step of a simulation
     """
 
-    def __init__(self, step_i, *args, **kwargs):
+    def __init__(self, step_i, state):
         self._i = step_i
+        self._state = state
+
+    def __str__(self):
+        return f't-{self._i}, state: {self._state}'

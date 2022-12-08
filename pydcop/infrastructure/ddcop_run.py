@@ -36,6 +36,7 @@ from pydcop.computations_graph.objects import ComputationGraph
 from pydcop.dcop.dcop import DCOP
 from pydcop.dcop.objects import AgentDef
 from pydcop.distribution.objects import Distribution
+from pydcop.envs import SimulationEnvironment
 from pydcop.infrastructure.communication import InProcessCommunicationLayer, \
     HttpCommunicationLayer
 from pydcop.infrastructure.orchestratedagents import OrchestratedAgent, DynamicOrchestratedAgent
@@ -56,7 +57,8 @@ def run_local_thread_dcop(algo: AlgorithmDef,
                           replication=None,
                           delay=None,
                           uiport=None,
-                          stabilization_algorithm: str = None) -> DynamicOrchestrator:
+                          stabilization_algorithm: str = None,
+                          sim_env:SimulationEnvironment = None) -> DynamicOrchestrator:
     """Build orchestrator and agents for running a dcop in threads.
 
     The DCOP will be run in a single process, using one thread for each agent.
@@ -103,9 +105,18 @@ def run_local_thread_dcop(algo: AlgorithmDef,
     comm = InProcessCommunicationLayer()
 
     orchestrator = DynamicOrchestrator(
-        algo=algo, cg=cg, agent_mapping=distribution, comm=comm, dcop=dcop, infinity=infinity, collector=collector,
-        collect_moment=collect_moment, collect_period=period, ui_port=uiport,
+        algo=algo,
+        cg=cg,
+        agent_mapping=distribution,
+        comm=comm,
+        dcop=dcop,
+        infinity=infinity,
+        collector=collector,
+        collect_moment=collect_moment,
+        collect_period=period,
+        ui_port=uiport,
         stabilization_algorithm=stabilization_algorithm,
+        simulation_environment=sim_env,
     )
     orchestrator.start()
 
@@ -139,16 +150,26 @@ def run_local_process_dcop(algo: AlgorithmDef, cg: ComputationGraph,
                            period=None,
                            delay=None,
                            uiport=None,
-                           stabilization_algorithm: str = None
+                           stabilization_algorithm: str = None,
+                           sim_env: SimulationEnvironment = None,
                            ) -> DynamicOrchestrator:
     agents = dcop.agents
     port = 9000
     comm = HttpCommunicationLayer(('127.0.0.1', port))
 
     orchestrator = DynamicOrchestrator(
-        algo=algo, cg=cg, agent_mapping=distribution, comm=comm, dcop=dcop, infinity=infinity, collector=collector,
-        collect_moment=collect_moment, collect_period=period, ui_port=uiport,
+        algo=algo,
+        cg=cg,
+        agent_mapping=distribution,
+        comm=comm,
+        dcop=dcop,
+        infinity=infinity,
+        collector=collector,
+        collect_moment=collect_moment,
+        collect_period=period,
+        ui_port=uiport,
         stabilization_algorithm=stabilization_algorithm,
+        simulation_environment=sim_env,
     )
     orchestrator.start()
 

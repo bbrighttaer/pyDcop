@@ -28,6 +28,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 import copy
+import functools
 import threading
 import time
 from collections import defaultdict
@@ -50,6 +51,7 @@ from pydcop.dcop.scenario import Scenario
 from pydcop.distribution import gh_cgdp
 from pydcop.distribution.objects import Distribution
 from pydcop.envs import SimulationEnvironment
+from pydcop.infrastructure import notify_wrap
 from pydcop.infrastructure.agents import Agent, AgentException
 from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT, InProcessCommunicationLayer, \
     HttpCommunicationLayer
@@ -440,7 +442,7 @@ class DynamicOrchestrator(Orchestrator):
                 computation=self.simulation_environment,
                 comp_name=ORCHESTRATOR_SIMULATION_ENV,
             )
-            self._own_agt.start()
+            self._own_agt.run(self.simulation_environment.name)
 
     def start_replication(self, k_target: int):
         self.logger.warning(f"Replication is not supported by {self.__class__.__name__}")
@@ -461,8 +463,37 @@ class DynamicOrchestrator(Orchestrator):
 
             self.process_scenarios(scenario)
         else:
-            self.logger.debug(f'RUN SIMULATION HERE!!!')
+            self.logger.debug(f'Running scenarios from simulation environment: {self.simulation_environment.name}')
+            # set simulation env step function as periodic action
+            cb = self.agent.set_periodic_action(
+                period=self.simulation_environment.time_step_delay,
+                cb=self.simulation_environment.step,
+            )
 
+            # dynamically override the on_simulation_ended cb of simulation environment to remove periodic action
+            self.simulation_environment.on_simulation_ended = notify_wrap(
+                self.simulation_environment.on_simulation_ended,
+                functools.partial(
+                    self.agent.remove_periodic_action,
+                    cb,
+                ),
+            )
+
+            # override run_stabilization method
+            self.simulation_environment.run_stabilization_computation = notify_wrap(
+                self.simulation_environment.run_stabilization_computation,
+                functools.partial(
+                    self.mgt.run_stabilization_computation,
+                )
+            )
+
+            # override remove_agent method
+            self.simulation_environment.remove_agent = notify_wrap(
+                self.simulation_environment.remove_agent,
+                functools.partial(
+                    self.mgt.remove_agent,
+                )
+            )
 
         self.mgt.wait_stop_agents()
         self._own_agt.clean_shutdown()
@@ -1432,12 +1463,12 @@ class DynamicAgentsMgt(AgentsMgt):
             if a.type == 'add_agent':
                 self.logger.info('Event action: Adding agent %s ', a)
                 # self._add_agent(a.args['agent'])
-                self._run_stabilization_computation(a.args['agent'])
+                self.run_stabilization_computation(a.args['agent'])
 
             elif a.type == 'remove_agent':
                 self.logger.info('Event action: Remove agent %s ', a)
                 agt = a.args['agent']
-                self._send_mgt_msg(agt, AgentRemovedMessage())
+                self.remove_agent(agt)
                 leaving_agents.append(agt)
 
             # elif a.type == 'change_constraint':
@@ -1448,7 +1479,10 @@ class DynamicAgentsMgt(AgentsMgt):
                 self.logger.error('Unknown event action %s ', a)
                 raise ValueError(f'Unknown event action ' + str(a))
 
-    def _run_stabilization_computation(self, agent):
+    def remove_agent(self, agt):
+        self._send_mgt_msg(agt, AgentRemovedMessage())
+
+    def run_stabilization_computation(self, agent):
         """
         Runs the stabilization algorithm of the given agent
         """

@@ -48,7 +48,7 @@ import traceback
 import random
 from functools import partial
 from importlib import import_module
-from threading import Thread, Lock
+from threading import Thread
 from time import perf_counter, sleep
 from typing import Dict, List, Optional, Union, Callable, Tuple
 
@@ -58,6 +58,7 @@ from pydcop.algorithms import AlgorithmDef, ComputationDef, load_algorithm_modul
 from pydcop.dcop.objects import AgentDef, create_binary_variables
 from pydcop.dcop.objects import BinaryVariable
 from pydcop.dcop.relations import Constraint
+from pydcop.infrastructure import notify_wrap
 from pydcop.infrastructure.Events import event_bus
 from pydcop.infrastructure.communication import Messaging, \
     CommunicationLayer, UnreachableAgent
@@ -873,14 +874,6 @@ class Agent(object):
 
     def __repr__(self):
         return 'Agent: ' + self._name
-
-
-def notify_wrap(f, cb):
-
-    def wrapped(*args, **kwargs):
-        f(*args, **kwargs)
-        cb(*args, **kwargs)
-    return wrapped
 
 
 class AgentMetrics(object):
