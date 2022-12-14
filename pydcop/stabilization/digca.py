@@ -112,8 +112,8 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.add_periodic_action(self.connect_interval, self._connect)
 
         # start processes for connection maintenance
-        # self.add_periodic_action(self.keep_alive_check_interval, self._inspect_connections)
-        # self.add_periodic_action(self.keep_alive_msg_interval, self._send_keep_alive_msg)
+        self.add_periodic_action(self.keep_alive_check_interval, self._inspect_connections)
+        self.add_periodic_action(self.keep_alive_msg_interval, self._send_keep_alive_msg)
 
     def _connect(self):
         if self.state == State.INACTIVE and not self.parent:
@@ -177,7 +177,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         if self.state == State.INACTIVE \
                 and self._phi(msg.agent_id) \
                 and self._has_constraint_with(msg.comps):
-                # and len(self.neighbors) < 3:
+            # and len(self.neighbors) < 3:
             self.logger.debug(f'Sending announce response to {msg.agent_id}')
 
             # construct announce response msg
@@ -317,11 +317,26 @@ class DIGCA(DynamicGraphConstructionComputation):
     def _send_keep_alive_msg(self):
         for neighbor in self.neighbors:
             self.logger.debug(f'Sending keep alive to {neighbor.agent_id}')
+            # direct communication
+            # self.post_msg(
+            #     target=f'{NAME}-{neighbor.agent_id}',
+            #     msg=KeepAlive(
+            #         agent_id=self.agent.name,
+            #         address=self.address,
+            #     ),
+            #     prio=0,
+            # )
+
+            # communication via orchestrator (serving as base station)
             self.post_msg(
-                target=f'{NAME}-{neighbor.agent_id}',
-                msg=KeepAlive(
-                    agent_id=self.agent.name,
-                    address=self.address,
+                target=ORCHESTRATOR_DIRECTORY,
+                msg=BroadcastMessage(
+                    message=KeepAlive(
+                        agent_id=self.agent.name,
+                        address=self.address,
+                    ),
+                    originator=self.name,
+                    recipient_prefix=f'{NAME}-{neighbor.agent_id}',
                 ),
                 prio=0,
             )

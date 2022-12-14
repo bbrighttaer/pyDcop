@@ -57,7 +57,7 @@ from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT, InP
     HttpCommunicationLayer
 from pydcop.infrastructure.computations import Message, message_type, \
     MessagePassingComputation
-from pydcop.infrastructure.discovery import Directory, UnknownAgent
+from pydcop.infrastructure.discovery import Directory, UnknownAgent, BroadcastMessage
 from pydcop.reparation.removal import _removal_candidate_agents, \
     _removal_orphaned_computations, _removal_candidate_agt_info
 
@@ -423,7 +423,13 @@ class DynamicOrchestrator(Orchestrator):
                                     self._own_agt, self, infinity, collector=collector,
                                     collect_moment=collect_moment,
                                     collect_period=collect_period)
+
         self.simulation_environment = simulation_environment
+        # if a simulation environment has been specified, pass custom handlers to directory computation
+        if simulation_environment:
+            self.directory.directory_computation.update_message_handlers({
+                'broadcast_message': self._on_broadcast_msg,
+            })
 
         self._sim_end_t = threading.Thread(target=self._end_dynamic_simulation, name='sim_end_monitor', daemon=True)
 
@@ -500,7 +506,7 @@ class DynamicOrchestrator(Orchestrator):
             self.simulation_environment.next_time_step = notify_wrap(
                 self.simulation_environment.next_time_step,
                 functools.partial(
-                    self.on_sim_env_time_step_change,
+                    self.on_sim_env_time_step_changed,
                 )
             )
 
@@ -514,7 +520,7 @@ class DynamicOrchestrator(Orchestrator):
         self.mgt._orchestrator_stop_agents()
         self.logger.info(f'Final graph: {self._current_graph.edges.data()}')
 
-    def on_sim_env_time_step_change(self):
+    def on_sim_env_time_step_changed(self):
         for agent in self.directory.agents_data:
             if agent != ORCHESTRATOR:
                 self.mgt._send_mgt_msg(
@@ -523,6 +529,33 @@ class DynamicOrchestrator(Orchestrator):
                         self.simulation_environment.get_time_step_end_data(agent)
                     )
                 )
+
+    def _on_broadcast_msg(self, sender, msg: BroadcastMessage):
+        """
+        Ensures that only agents within communication range can receive broadcast msg.
+        """
+        agent_id = self.discovery.computation_agent(sender)
+        agents = self.simulation_environment.get_agents_in_communication_range(agent_id)
+        if agents:
+            if msg.message.type == 'announce':
+                for comp in self.directory.discovery.computations():
+                    agt = self.discovery.computation_agent(comp)
+                    if agt in agents and comp.startswith(msg.recipient_prefix) and comp != msg.originator:
+                        # send message
+                        self.mgt.post_msg(
+                            target=comp,
+                            msg=msg.message,
+                            on_error='fail'
+                        )
+            elif msg.message.type == 'keep_alive':
+                neighbor_id = msg.recipient_prefix.split('-')[1]
+                if neighbor_id in agents:
+                    # forward the message
+                    self.mgt.post_msg(
+                        target=msg.recipient_prefix,
+                        msg=msg.message,
+                        prio=0,
+                    )
 
 
 ################################################################################

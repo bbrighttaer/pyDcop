@@ -162,6 +162,9 @@ class DirectoryComputation(MessagePassingComputation):
     def on_message(self, sender: DiscoveryName, msg: Message, t):
         self._handlers[msg.type](sender, msg)
 
+    def update_message_handlers(self, handlers: dict):
+        self._handlers.update(handlers)
+
     def _on_publish_agent(self, _: DiscoveryName, msg: PublishAgentMessage):
         self.logger.info('publication of agent %s with address %s',
                          msg.agents, msg.address)

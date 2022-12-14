@@ -1,4 +1,6 @@
 import random
+import time
+
 import numpy as np
 
 from pydcop.envs import SimulationEnvironment
@@ -69,6 +71,8 @@ class GridWorld(SimulationEnvironment):
                         self.logger.info('Event action: Remove agent %s ', a)
                         self.remove_agent(a.args['agent'])
 
+            # wait for a while before signaling agents
+            time.sleep(.1)
             self.next_time_step()
         except StopIteration:
             self.on_simulation_ended()
@@ -114,6 +118,34 @@ class GridWorld(SimulationEnvironment):
             'agents_in_comm_range': None,
         }
 
+    def get_agents_in_communication_range(self, agent_id) -> list:
+        nearby_agents = []
+        cells_to_inspect = []
+        agent: MobileSensingAgent = self.agents[agent_id]
+        cell: GridCell = agent.current_cell
+
+        # compile list of cells to inspect
+        cells_to_inspect.append(cell)
+        if agent.communication_range > 1:
+            up = self.grid.get(cell.up(), None)
+            down = self.grid.get(cell.down(), None)
+            left = self.grid.get(cell.left(), None)
+            right = self.grid.get(cell.right(), None)
+            left_up = self.grid.get(cell.left_up(), None)
+            right_up = self.grid.get(cell.right_up(), None)
+            left_down = self.grid.get(cell.left_down(), None)
+            right_down = self.grid.get(cell.right_down(), None)
+            cells_to_inspect += [up, down, left, right, left_up, right_up, left_down, right_down]
+
+        # inspect cells for agents
+        for cell in cells_to_inspect:
+            if cell:
+                for obj in cell.contents:
+                    if isinstance(obj, MobileSensingAgent) and obj.player_id != agent_id:
+                        nearby_agents.append(obj.player_id)
+
+        return nearby_agents
+
 
 class GridCell:
     """
@@ -138,6 +170,30 @@ class GridCell:
     def add(self, o):
         self.contents.append(o)
 
+    def up(self):
+        return str(self.i - 1) + '-' + str(self.j)
+
+    def down(self):
+        return str(self.i + 1) + '-' + str(self.j)
+
+    def left(self):
+        return str(self.i) + '-' + str(self.j - 1)
+
+    def right(self):
+        return str(self.i) + '-' + str(self.j + 1)
+
+    def left_up(self):
+        return str(self.i - 1) + '-' + str(self.j - 1)
+
+    def left_down(self):
+        return str(self.i + 1) + '-' + str(self.j - 1)
+
+    def right_up(self):
+        return str(self.i - 1) + '-' + str(self.j + 1)
+
+    def right_down(self):
+        return str(self.i + 1) + '-' + str(self.j + 1)
+
     def __str__(self):
         return f'{self.cell_id}: {str([str(c) for c in self.contents])}'
 
@@ -151,7 +207,7 @@ class MobileSensingAgent:
         self.credibility = 5
         self.sensing_range = 1
         self.mobility_range = 2
-        self.connectivity_range = 3
+        self.communication_range = 3
 
     def __str__(self):
         return f'Agent(id={self.player_id}, cred={self.credibility})'

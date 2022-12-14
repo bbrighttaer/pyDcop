@@ -19,9 +19,9 @@ events:
     agent: a2
 - id: w3
   delay: 10
-- id: e3
-  actions:
-  - type: remove_agent
-    agent: a0
+#- id: e3
+#  actions:
+#  - type: remove_agent
+#    agent: a0
 - id: w3
   delay: 10

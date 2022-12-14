@@ -45,6 +45,9 @@ class SimulationEnvironment(MessagePassingComputation):
     def evaluate_constraint(self):
         ...
 
+    def get_agents_in_communication_range(self, agent_id):
+        ...
+
 
 class TimeStep:
     """
