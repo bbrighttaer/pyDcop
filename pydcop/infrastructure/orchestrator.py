@@ -522,7 +522,7 @@ class DynamicOrchestrator(Orchestrator):
 
     def on_sim_env_time_step_changed(self):
         for agent in self.directory.agents_data:
-            if agent != ORCHESTRATOR:
+            if agent in self.simulation_environment.agents and agent != ORCHESTRATOR:
                 self.mgt._send_mgt_msg(
                     agt=agent,
                     msg=SimTimeStepChanged(

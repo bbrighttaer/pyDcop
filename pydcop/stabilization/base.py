@@ -74,7 +74,8 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
 
     def on_message(self, sender: str, msg: Message, t: float):
         try:
-            self.last_contact_time[msg.agent_id] = time.time()
+            if hasattr(msg, 'agent_id'):
+                self.last_contact_time[msg.agent_id] = time.time()
             self._msg_handlers[msg.type](sender, msg)
         except KeyError:
             self.logger.error(f'Could not find function callback for msg type: {msg.type}')
@@ -149,7 +150,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
             if hasattr(computation, 'computation_def'):
                 computation_def: ComputationDef = computation.computation_def
 
-                if computation_def.exec_mode is not 'dynamic':
+                if computation_def.exec_mode != 'dynamic':
                     computation_def.exec_mode = 'dynamic'
 
                 # configure computation node constraints and links

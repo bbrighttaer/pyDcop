@@ -1,5 +1,6 @@
 import random
 import time
+from collections import defaultdict
 
 import numpy as np
 
@@ -27,6 +28,7 @@ class GridWorld(SimulationEnvironment):
         # self._initial_distribution = v / v.sum()
         m = np.random.rand(s, s)
         self._transition_function = m / m.sum(axis=1).reshape(-1, 1)
+        self.scores = defaultdict(float)
 
     def on_start(self):
         self.logger.debug('Started GridWorld simulation environment')
@@ -112,10 +114,11 @@ class GridWorld(SimulationEnvironment):
                 self.grid[cell.cell_id] = cell
 
     def get_time_step_end_data(self, agent_id):
+        sensor = self.agents.get(agent_id, None)
         return {
-            'current_position': None,
-            'score': None,  # score in the just ended time step
-            'agents_in_comm_range': None,
+            'current_position': sensor.current_cell.cell_id,
+            'score': 0. if sensor is None else self.scores[agent_id],  # score in the just ended time step
+            'agents_in_comm_range': [] if sensor is None else self.get_agents_in_communication_range(agent_id),
         }
 
     def get_agents_in_communication_range(self, agent_id) -> list:

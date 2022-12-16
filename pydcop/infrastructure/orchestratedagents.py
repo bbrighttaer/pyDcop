@@ -35,7 +35,7 @@ from typing import Dict, List, Set, Union
 from pydcop.algorithms import ComputationDef
 from pydcop.dcop.objects import AgentDef
 from pydcop.infrastructure.agents import ResilientAgent, DynamicAgent
-from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT
+from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT, MSG_ALGO
 from pydcop.infrastructure.computations import (
     MessagePassingComputation,
     Message,
@@ -390,6 +390,11 @@ class OrchestrationComputation(MessagePassingComputation):
 
     def _on_simulation_time_step_change(self, sender: str, msg: SimTimeStepChanged, t: float):
         self.logger.debug(f'Simulation time step changed: {msg}')
+        self.post_msg(
+            target=f'DIGCA-{self.agent.name}',
+            msg=msg,
+            prio=MSG_ALGO,
+        )
 
     def on_computation_value_changed(self, computation: str, value, cost, cycle):
         """
