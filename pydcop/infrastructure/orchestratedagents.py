@@ -389,7 +389,7 @@ class OrchestrationComputation(MessagePassingComputation):
         self.agent.run([self.agent.stabilization_comp.name])
 
     def _on_simulation_time_step_change(self, sender: str, msg: SimTimeStepChanged, t: float):
-        self.logger.debug(f'Simulation time step changed: {msg}')
+        self.logger.info(f'Simulation time step changed: {msg}')
         self.post_msg(
             target=f'DIGCA-{self.agent.name}',
             msg=msg,

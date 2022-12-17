@@ -119,6 +119,7 @@ class GridWorld(SimulationEnvironment):
             'current_position': sensor.current_cell.cell_id,
             'score': 0. if sensor is None else self.scores[agent_id],  # score in the just ended time step
             'agents_in_comm_range': [] if sensor is None else self.get_agents_in_communication_range(agent_id),
+            'agent_domain': self._get_legit_actions(self.agents[agent_id].current_cell),
         }
 
     def get_agents_in_communication_range(self, agent_id) -> list:
@@ -148,6 +149,27 @@ class GridWorld(SimulationEnvironment):
                         nearby_agents.append(obj.player_id)
 
         return nearby_agents
+
+    def _get_legit_actions(self, cell):
+        actions = []
+        if cell:
+            if self.grid.get(cell.up(), None):
+                actions.append('up')
+            if self.grid.get(cell.down(), None):
+                actions.append('down')
+            if self.grid.get(cell.left(), None):
+                actions.append('left')
+            if self.grid.get(cell.right(), None):
+                actions.append('right')
+            if self.grid.get(cell.left_up(), None):
+                actions.append('left_up')
+            if self.grid.get(cell.right_up(), None):
+                actions.append('right_up')
+            if self.grid.get(cell.left_down(), None):
+                actions.append('left_down')
+            if self.grid.get(cell.right_down(), None):
+                actions.append('right_down')
+        return actions
 
 
 class GridCell:

@@ -7,7 +7,7 @@ from pydcop.infrastructure.communication import ComputationMessage, MSG_ALGO, MS
 from pydcop.infrastructure.computations import MessagePassingComputation, message_type
 from pydcop.infrastructure.discovery import Discovery, BroadcastMessage
 from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_MGT, ORCHESTRATOR_DIRECTORY
-from pydcop.infrastructure.orchestrator import ORCHESTRATOR, GraphConnectionMessage
+from pydcop.infrastructure.orchestrator import ORCHESTRATOR, GraphConnectionMessage, SimTimeStepChanged
 from pydcop.stabilization import Neighbor, Seconds, transient_communication
 from pydcop.stabilization.base import DynamicGraphConstructionComputation
 
@@ -100,6 +100,7 @@ class DIGCA(DynamicGraphConstructionComputation):
             'parent_assigned': self._receive_parent_assigned,
             'already_active': self._receive_already_active,
             'keep_alive': self._receive_keep_alive,
+            'sim_time_step_change': self._receive_sim_step_changed,
         }
 
     def on_start(self):
@@ -293,6 +294,9 @@ class DIGCA(DynamicGraphConstructionComputation):
 
         # execute computation (if topdown/async)
         self.execute_computations('top-down')
+
+    def _receive_sim_step_changed(self, sender: str, msg: SimTimeStepChanged):
+        self.logger.info(f'Received simulation time step changed: {msg}')
 
     def _phi(self, agt_id) -> bool:
         """
