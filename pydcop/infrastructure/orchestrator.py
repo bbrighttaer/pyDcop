@@ -634,6 +634,11 @@ SimTimeStepChanged = message_type(
     'sim_time_step_change', ['data']
 )
 
+# Sent from a stabilization computation to DCOP computation(s)
+DcopExecutionMessage = message_type(
+    'dcop_execution_message', ['data']
+)
+
 
 class RepairRunMessage(Message):
     """
@@ -1589,6 +1594,9 @@ class DynamicAgentsMgt(AgentsMgt):
         else:
             self.logger.error(f'DCOP definition that not have agent {agent_name}')
             raise ValueError(f'Agent {agent_name} not found in problem definition')
+
+    def _deploy_computation(self, agent_id: str, exec_mode='dynamic'):
+        super(DynamicAgentsMgt, self)._deploy_computation(agent_id, exec_mode)
 
     def _on_computation_end_msg(self, sender: str,
                                 msg: ComputationFinishedMessage, _: float):

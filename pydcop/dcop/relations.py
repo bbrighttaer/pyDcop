@@ -31,6 +31,7 @@
 
 import functools
 import random
+import threading
 from copy import deepcopy
 
 import numpy as np
@@ -1767,3 +1768,28 @@ def projection(a_rel: Constraint, a_var: Variable, mode="max") -> Constraint:
         proj_rel = proj_rel.set_value_for_assignment(partial, rel_val)
 
     return proj_rel
+
+
+class DynamicEnvironmentSimulationRelation(AbstractBaseRelation, SimpleRepr):
+    """
+    A relation that connects to a simulation environment to compute cost.
+    """
+
+    def __init__(self, name: str, computation):
+        super().__init__(name)
+        self._evt = threading.Event()
+        self._returned_data = None
+        self._comp = computation
+
+    def get_value_for_assignment(self, assignment):
+        # push message to sim environment
+
+        # wait for data from sim environment
+        self._evt.wait()
+
+        # return value
+
+    def set_returned_value(self, data):
+        self._returned_data = data
+        self._evt.set()
+

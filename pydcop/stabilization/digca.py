@@ -88,6 +88,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.announce_response_list = []
         self.connect_interval: Seconds = 4
         self.announce_response_listening_time: Seconds = 1
+        self._affected = False
 
         self.keep_alive_agents = []
         self.keep_alive_check_interval: Seconds = 7
@@ -116,7 +117,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         # self.add_periodic_action(self.keep_alive_check_interval, self._inspect_connections)
         # self.add_periodic_action(self.keep_alive_msg_interval, self._send_keep_alive_msg)
 
-    def connect(self, cb: Callable[[], None] = None):
+    def connect(self, cb: Callable[[str], None] = None):
         """
         Broadcasts an Announce message to get a parent agent or connect to another agent.
 
@@ -175,9 +176,8 @@ class DIGCA(DynamicGraphConstructionComputation):
             self.announce_response_list.clear()
 
             # callback function
-            if cb:
-                time.sleep(.1)  # allow time for possible neighbor addition process to complete
-                cb()
+            if not self._affected and cb:
+                cb('connect-call')
 
     def _var_theta(self):
         return random.choice(self.announce_response_list)
@@ -206,6 +206,7 @@ class DIGCA(DynamicGraphConstructionComputation):
 
             # registration and configuration
             self.register_neighbor(neighbor)
+            self._affected = True
 
             # construct and send child-added msg
             self.post_msg(
@@ -245,6 +246,7 @@ class DIGCA(DynamicGraphConstructionComputation):
 
             # registration and configuration
             self.register_neighbor(self.parent)
+            self._affected = True
 
             # construct and send parent-assigned msg
             self.post_msg(
@@ -283,6 +285,8 @@ class DIGCA(DynamicGraphConstructionComputation):
 
     def receive_sim_step_changed(self, sender: str, msg: SimTimeStepChanged):
         self.logger.info(f'Received simulation time step changed: {msg}')
+        self.domain = msg.data['agent_domain']
+        self._affected = False
 
         # remove agents that are out of range
         self._inspect_connections(msg.data['agents_in_comm_range'])

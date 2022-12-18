@@ -6,6 +6,8 @@ from pydcop.dcop.relations import constraint_from_str
 from pydcop.infrastructure.computations import register
 
 # GRAPH_TYPE = "constraints_hypergraph"
+from pydcop.infrastructure.orchestrator import DcopExecutionMessage
+
 GRAPH_TYPE = "pseudotree"
 
 algo_params = [
@@ -53,6 +55,10 @@ class CCoCoA(CoCoA):
     @register(CoCoAMessage.START_DCOP_MESSAGE)
     def _on_start_dcop(self, variable_name: str, recv_msg: CoCoAMessage, t: int):
         return super()._on_start_dcop(variable_name, recv_msg, t)
+
+    @register("dcop_execution_message")
+    def _on_dcop_execution_message(self, sender: str, recv_msg: DcopExecutionMessage, t: int):
+        return super(CCoCoA, self)._on_dcop_execution_message(sender, recv_msg, t)
 
     def _calculate_cost(self, var_values) -> tuple:
         """

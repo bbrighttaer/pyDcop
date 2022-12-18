@@ -7,7 +7,8 @@ import numpy as np
 from pydcop.algorithms import ComputationDef, AlgoParameterDef
 from pydcop.dcop.relations import Constraint
 from pydcop.infrastructure.computations import VariableComputation, Message, register
-
+from pydcop.infrastructure.orchestrator import DcopExecutionMessage
+from pydcop.stabilization.base import DynamicDcopComputationMixin
 
 GRAPH_TYPE = "constraints_hypergraph"
 MSG_PRIORITY = 1
@@ -57,7 +58,7 @@ class CoCoAMessage(Message):
         return f"CoCoAMessage({self._msg_type}, {self._content})"
 
 
-class CoCoA(VariableComputation):
+class CoCoA(VariableComputation, DynamicDcopComputationMixin):
     """
     This is an implementation of the Cooperative Constraint Approximation algorithm.
 

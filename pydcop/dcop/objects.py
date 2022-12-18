@@ -78,6 +78,10 @@ class Domain(Sized, SimpleRepr, Iterable[Any]):
     def values(self) -> Iterable:
         return self._values
 
+    @values.setter
+    def values(self, vals):
+        self._values = vals
+
     def __iter__(self):
         # returns the array
         return self._values.__iter__()
