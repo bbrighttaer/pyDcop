@@ -219,7 +219,6 @@ class DIGCA(DynamicGraphConstructionComputation):
             )
 
             # report connection to graph UI
-
             self.post_msg(
                 ORCHESTRATOR_MGT,
                 GraphConnectionMessage(
@@ -231,21 +230,12 @@ class DIGCA(DynamicGraphConstructionComputation):
             )
 
         else:
-            # construct already-active msg
-            full_msg = ComputationMessage(
-                src_comp=self.name,
-                dest_comp=f'{NAME}-{msg.agent_id}',
-                msg=AlreadyActive(agent_id=self.agent.name, address=self.address),
-                msg_type=MSG_ALGO,
-            )
-
             # send already-active msg
-            with transient_communication(self.discovery, msg.agent_id, msg.address):
-                self.agent.communication.send_msg(
-                    src_agent=self.agent.name,
-                    dest_agent=msg.agent_id,
-                    msg=full_msg,
-                    on_error='fail',
+            dest_comp = f'{NAME}-{msg.agent_id}'
+            with transient_communication(self.discovery, dest_comp, msg.agent_id, msg.address):
+                self.post_msg(
+                    target=dest_comp,
+                    msg=AlreadyActive(agent_id=self.agent.name, address=self.address),
                 )
 
     def _receive_child_added(self, sender: str, msg: ChildAdded):
