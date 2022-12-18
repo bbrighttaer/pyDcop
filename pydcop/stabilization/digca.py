@@ -93,7 +93,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.keep_alive_check_interval: Seconds = 7
         self.keep_alive_msg_interval: Seconds = 5
 
-        self._msg_handlers = {
+        self._msg_handlers.update({
             'announce': self._receive_announce,
             'announce_response': self._receive_announce_response,
             'add_me': self._receive_add_me,
@@ -101,8 +101,7 @@ class DIGCA(DynamicGraphConstructionComputation):
             'parent_assigned': self._receive_parent_assigned,
             'already_active': self._receive_already_active,
             'keep_alive': self._receive_keep_alive,
-            'sim_time_step_change': self._receive_sim_step_changed,
-        }
+        })
 
     def on_start(self):
         super(DIGCA, self).on_start()
@@ -177,6 +176,7 @@ class DIGCA(DynamicGraphConstructionComputation):
 
             # callback function
             if cb:
+                time.sleep(.1)  # allow time for possible neighbor addition process to complete
                 cb()
 
     def _var_theta(self):
@@ -291,7 +291,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         # execute computation (if topdown/async)
         self.execute_computations('top-down')
 
-    def _receive_sim_step_changed(self, sender: str, msg: SimTimeStepChanged):
+    def receive_sim_step_changed(self, sender: str, msg: SimTimeStepChanged):
         self.logger.info(f'Received simulation time step changed: {msg}')
 
         # remove agents that are out of range

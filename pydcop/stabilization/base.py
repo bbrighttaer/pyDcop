@@ -5,6 +5,7 @@ from typing import List, Callable, Union
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.computations import MessagePassingComputation, Message
 from pydcop.infrastructure.discovery import Discovery
+from pydcop.infrastructure.orchestrator import SimTimeStepChanged
 from pydcop.stabilization import Neighbor
 
 
@@ -32,7 +33,9 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         self.cycle_count = 0
 
         # supposed to be overridden by subclass to handle messages
-        self._msg_handlers = {}
+        self._msg_handlers = {
+            'sim_time_step_change': self.receive_sim_step_changed,
+        }
 
     @property
     def neighbors(self) -> List[Neighbor]:
@@ -44,6 +47,21 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
     @property
     def neighbor_ids(self) -> List[str]:
         return [n.agent_id for n in self.neighbors]
+
+    def receive_sim_step_changed(self, sender: str, msg: SimTimeStepChanged):
+        """
+        Handles simulation time step changed events.
+
+        Parameters
+        ----------
+        sender
+        msg
+
+        Returns
+        -------
+
+        """
+        pass
 
     def find_neighbor_by_agent_id(self, agent_id) -> Union[Neighbor, None]:
         for n in self.neighbors:
