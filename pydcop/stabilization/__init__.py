@@ -9,6 +9,7 @@ Neighbor = namedtuple(
 Seconds = int
 AgentID = str
 MaxDegree = int
+ComputationName = str
 
 
 class transient_communication:
@@ -20,13 +21,24 @@ class transient_communication:
     of the agent.
     """
 
-    def __init__(self, discovery: Discovery, agent: AgentID, agent_address):
+    def __init__(self, discovery: Discovery, dest_comp_name: ComputationName, agent: AgentID, agent_address):
         self._discovery = discovery
         self._agent = agent
         self._agent_address = agent_address
+        self._comp_name = dest_comp_name
 
     def __enter__(self):
-        self._discovery.register_agent(self._agent, self._agent_address, publish=False)
+        self._discovery.register_computation(
+            computation=self._comp_name,
+            agent=self._agent,
+            address=self._agent_address,
+            publish=False,  # internal
+        )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._discovery.unregister_agent(self._agent, publish=False)
+        self._discovery.unregister_computation(
+            computation=self._comp_name,
+            agent=self._agent,
+            publish=False,
+            silent=True,
+        )

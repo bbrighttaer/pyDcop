@@ -1169,7 +1169,7 @@ class Discovery(object):
                  if not oneshot]
 
     def unregister_computation(self, computation: ComputationName,
-                               agent: AgentName=None, publish: bool=True):
+                               agent: AgentName=None, publish: bool=True, silent: bool=False):
         """
         Un-registers a computation.
 
@@ -1222,8 +1222,9 @@ class Discovery(object):
                 self.discovery_computation.send_to_directory(
                     UnPublishComputationMessage(computation, agent))
             else:
-                self.logger.info('un-register local computation %s from '
-                                 'agent %s', computation, agent)
+                if not silent:
+                    self.logger.info('un-register local computation %s from '
+                                     'agent %s', computation, agent)
 
         except KeyError:
             self.logger.info('Attempting to unregister an unknown '

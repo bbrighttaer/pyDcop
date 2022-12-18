@@ -1,13 +1,14 @@
 import enum
 import random
 import time
+from typing import Callable
 
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.communication import ComputationMessage, MSG_ALGO, MSG_MGT
 from pydcop.infrastructure.computations import MessagePassingComputation, message_type
 from pydcop.infrastructure.discovery import Discovery, BroadcastMessage
 from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_MGT, ORCHESTRATOR_DIRECTORY
-from pydcop.infrastructure.orchestrator import ORCHESTRATOR, GraphConnectionMessage, SimTimeStepChanged
+from pydcop.infrastructure.orchestrator import GraphConnectionMessage, SimTimeStepChanged
 from pydcop.stabilization import Neighbor, Seconds, transient_communication
 from pydcop.stabilization.base import DynamicGraphConstructionComputation
 
@@ -107,16 +108,28 @@ class DIGCA(DynamicGraphConstructionComputation):
         super(DIGCA, self).on_start()
         self.logger.debug(f'On start of {self.name}')
         # make a first connect call on startup
-        self._connect()
+        # self._connect()
 
         # make subsequent (repeated) connect calls in `self.connect_interval` seconds
-        self.add_periodic_action(self.connect_interval, self._connect)
+        # self.add_periodic_action(self.connect_interval, self._connect)
 
         # start processes for connection maintenance
-        self.add_periodic_action(self.keep_alive_check_interval, self._inspect_connections)
-        self.add_periodic_action(self.keep_alive_msg_interval, self._send_keep_alive_msg)
+        # self.add_periodic_action(self.keep_alive_check_interval, self._inspect_connections)
+        # self.add_periodic_action(self.keep_alive_msg_interval, self._send_keep_alive_msg)
 
-    def _connect(self):
+    def connect(self, cb: Callable[[], None] = None):
+        """
+        Broadcasts an Announce message to get a parent agent or connect to another agent.
+
+        Parameters
+        ----------
+        cb A function to be called after the Connect cycle.
+        It takes the execution order to be used as an optional argument.
+
+        Returns
+        -------
+
+        """
         if self.state == State.INACTIVE and not self.parent:
             self.logger.debug('DIGCA is connecting...')
 
@@ -126,7 +139,7 @@ class DIGCA(DynamicGraphConstructionComputation):
                 msg=BroadcastMessage(message=Announce(
                     agent_id=self.agent.name,
                     address=self.address,
-                    comps=[c.name for c in self.computations] + [self.name]
+                    comps=[c.name for c in self.agent.computations()]
                 ),
                     originator=self.name,
                     recipient_prefix=NAME
@@ -141,28 +154,19 @@ class DIGCA(DynamicGraphConstructionComputation):
             # select an agent from the list of respondents (if any)
             # self.logger.debug(f'Selecting from announce response list: {self.announce_response_list}')
             if self.announce_response_list:
-                selected_agent = self._var_theta()
-                self.logger.debug(f'Selected agent = {selected_agent}')
-
-                # construct add-me msg
-                full_msg = ComputationMessage(
-                    src_comp=self.name,
-                    dest_comp=f'{NAME}-{selected_agent.agent_id}',
-                    msg=AddMe(
-                        agent_id=self.agent.name,
-                        address=self.address,
-                        comps=[c.name for c in self.computations] + [self.name]
-                    ),
-                    msg_type=MSG_ALGO,
-                )
+                sel_agent = self._var_theta()
+                self.logger.debug(f'Selected agent = {sel_agent}')
 
                 # send add-me msg
-                with transient_communication(self.discovery, selected_agent.agent_id, selected_agent.address):
-                    self.agent.communication.send_msg(
-                        src_agent=self.name,
-                        dest_agent=selected_agent.agent_id,
-                        msg=full_msg,
-                        on_error='fail',
+                dest_comp = f'{NAME}-{sel_agent.agent_id}'
+                with transient_communication(self.discovery, dest_comp, sel_agent.agent_id, sel_agent.address):
+                    self.post_msg(
+                        target=dest_comp,
+                        msg=AddMe(
+                            agent_id=self.agent.name,
+                            address=self.address,
+                            comps=[c.name for c in self.agent.computations()]
+                        ),
                     )
 
                 # update state
@@ -171,31 +175,23 @@ class DIGCA(DynamicGraphConstructionComputation):
             # clear announce response list
             self.announce_response_list.clear()
 
+            # callback function
+            if cb:
+                cb()
+
     def _var_theta(self):
         return random.choice(self.announce_response_list)
 
     def _receive_announce(self, sender: str, msg: Announce):
-        if self.state == State.INACTIVE \
-                and self._phi(msg.agent_id) \
-                and self._has_constraint_with(msg.comps):
-            # and len(self.neighbors) < 3:
+        if self.state == State.INACTIVE and self._phi(msg.agent_id):  # and len(self.neighbors) < 3:
             self.logger.debug(f'Sending announce response to {msg.agent_id}')
 
-            # construct announce response msg
-            full_msg = ComputationMessage(
-                src_comp=self.name,
-                dest_comp=f'{NAME}-{msg.agent_id}',
-                msg=AnnounceResponse(agent_id=self.agent.name, address=self.address),
-                msg_type=MSG_ALGO,
-            )
-
-            # send announce response msg
-            with transient_communication(self.discovery, msg.agent_id, msg.address):
-                self.agent.communication.send_msg(
-                    src_agent=self.agent.name,
-                    dest_agent=msg.agent_id,
-                    msg=full_msg,
-                    on_error='fail'
+            # send add-me msg
+            dest_comp = f'{NAME}-{msg.agent_id}'
+            with transient_communication(self.discovery, dest_comp, msg.agent_id, msg.address):
+                self.post_msg(
+                    target=dest_comp,
+                    msg=AnnounceResponse(agent_id=self.agent.name, address=self.address),
                 )
 
     def _receive_announce_response(self, sender: str, msg: AnnounceResponse):
@@ -217,7 +213,7 @@ class DIGCA(DynamicGraphConstructionComputation):
                 msg=ChildAdded(
                     agent_id=self.agent.name,
                     address=self.address,
-                    comps=[c.name for c in self.computations] + [self.name]
+                    comps=[c.name for c in self.agent.computations()]
                 ),
                 on_error='fail',
             )
@@ -298,6 +294,12 @@ class DIGCA(DynamicGraphConstructionComputation):
     def _receive_sim_step_changed(self, sender: str, msg: SimTimeStepChanged):
         self.logger.info(f'Received simulation time step changed: {msg}')
 
+        # remove agents that are out of range
+        self._inspect_connections(msg.data['agents_in_comm_range'])
+
+        # execute DCOP computations after Connect call
+        self.connect(cb=self.execute_computations)
+
     def _phi(self, agt_id) -> bool:
         """
         Implements phi using index of agents extracted from agent IDs. This function assumes that agents are named
@@ -350,23 +352,15 @@ class DIGCA(DynamicGraphConstructionComputation):
         if msg.agent_id not in self.keep_alive_agents:
             self.keep_alive_agents.append(msg.agent_id)
 
-    def _inspect_connections(self):
+    def _inspect_connections(self, agents_in_comm_range):
         """
-        Checks the keep alive queue and remove connections deemed stale.
+        Removes out-of-range neighbors.
         """
-        self.logger.debug(f'Inspecting connections: {self.keep_alive_agents}')
-        affected = False
+        self.logger.debug(f'Inspecting connections: {agents_in_comm_range}')
         for neighbor in self.neighbors:
-            if neighbor.agent_id not in self.keep_alive_agents \
-                    and neighbor.agent_id in self.last_contact_time \
-                    and self.last_contact_time[neighbor.agent_id] + self.keep_alive_msg_interval < time.time():
-                self.logger.debug(f'Did not hear from {neighbor.agent_id}')
+            if neighbor.agent_id not in agents_in_comm_range:
+                self.logger.debug(f'Agent {neighbor.agent_id}')
                 self.unregister_neighbor(neighbor, callback=self._on_neighbor_removed)
-
-        if affected:
-            self.configure_computations()
-            self.execute_computations(is_reconfiguration=True)
-        self.keep_alive_agents.clear()
 
     def _on_neighbor_removed(self, neighbor: Neighbor, *args, **kwargs):
         # if parent was removed, set state to in-active to allow a new parent search (connect call).

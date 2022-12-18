@@ -213,10 +213,6 @@ class Agent(object):
             for n in computation.computation_def.node.neighbors:
                 self.discovery.subscribe_computation(n)
 
-            # if using DynamicAgent, pass this computation to the stabilization algorithm
-            if hasattr(self, 'stabilization_comp'):
-                self.stabilization_comp.add_computation(computation)
-
         if hasattr(computation, '_on_value_selection'):
             computation._on_value_selection = notify_wrap(
                 computation._on_value_selection,
