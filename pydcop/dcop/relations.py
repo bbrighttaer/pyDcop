@@ -1786,11 +1786,15 @@ class DynamicEnvironmentSimulationRelation(AbstractBaseRelation, SimpleRepr):
         # push message to sim environment
 
         # wait for data from sim environment
-        self._evt.wait()
+        # self._evt.wait()
 
         # return value
+        return 0.
 
     def set_returned_value(self, data):
         self._returned_data = data
         self._evt.set()
+
+    def __call__(self, *args, **kwargs):
+        return 0.
 

@@ -80,7 +80,7 @@ class Domain(Sized, SimpleRepr, Iterable[Any]):
 
     @values.setter
     def values(self, vals):
-        self._values = vals
+        self._values = tuple(vals)
 
     def __iter__(self):
         # returns the array

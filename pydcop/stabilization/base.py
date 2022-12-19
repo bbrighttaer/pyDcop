@@ -6,7 +6,7 @@ from pydcop.computations_graph import constraints_hypergraph, pseudotree
 from pydcop.computations_graph.dynamic_graph import DynamicComputationNode
 from pydcop.computations_graph.ordered_graph import ConstraintLink
 from pydcop.computations_graph.pseudotree import PseudoTreeLink
-from pydcop.dcop.objects import Variable
+from pydcop.dcop.objects import Variable, VariableDomain
 from pydcop.dcop.relations import DynamicEnvironmentSimulationRelation
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.computations import MessagePassingComputation, Message, register
@@ -169,7 +169,10 @@ class DynamicDcopComputationMixin:
             for i, n in enumerate(neighbors):
                 for j, comp_name in enumerate(n.computations):
                     if 'var' in comp_name:
-                        variables = [Variable(self.name, recv_msg.data['domain']), Variable(comp_name, [])]
+                        variables = [
+                            Variable(self.name, VariableDomain(self.name, self.name, recv_msg.data['domain'])),
+                            Variable(comp_name, VariableDomain(comp_name, comp_name, []))
+                        ]
                         constraint = DynamicEnvironmentSimulationRelation(f'c-{i}{j}', self, variables)
                         constraints.append(constraint)
                         links.append(
@@ -183,7 +186,10 @@ class DynamicDcopComputationMixin:
             for i, n in enumerate(children):
                 for j, comp_name in enumerate(n.computations):
                     if 'var' in comp_name:
-                        variables = [Variable(self.name, recv_msg.data['domain']), Variable(comp_name, [])]
+                        variables = [
+                            Variable(self.name, VariableDomain(self.name, self.name, recv_msg.data['domain'])),
+                            Variable(comp_name, VariableDomain(comp_name, comp_name, []))
+                        ]
                         constraint = DynamicEnvironmentSimulationRelation(f'c-{i}{j}', self, variables)
                         constraints.append(constraint)
                         links.append(
@@ -196,7 +202,10 @@ class DynamicDcopComputationMixin:
             if parent:
                 for i, comp_name in enumerate(parent.computations):
                     if 'var' in comp_name:
-                        variables = [Variable(self.name, recv_msg.data['domain']), Variable(comp_name, [])]
+                        variables = [
+                            Variable(self.name, VariableDomain(self.name, self.name, recv_msg.data['domain'])),
+                            Variable(comp_name, VariableDomain(comp_name, comp_name, []))
+                        ]
                         constraint = DynamicEnvironmentSimulationRelation(f'c-p{i}', self, variables)
                         constraints.append(constraint)
                         links.append(
