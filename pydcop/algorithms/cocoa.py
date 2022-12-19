@@ -7,7 +7,6 @@ import numpy as np
 from pydcop.algorithms import ComputationDef, AlgoParameterDef
 from pydcop.dcop.relations import Constraint
 from pydcop.infrastructure.computations import VariableComputation, Message, register
-from pydcop.infrastructure.orchestrator import DcopExecutionMessage
 from pydcop.stabilization.base import DynamicDcopComputationMixin
 
 GRAPH_TYPE = "constraints_hypergraph"
@@ -133,9 +132,11 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         if self.name == variables[0].name:
             var1 = variables[0]
             var2 = variables[1]
+            var2.domain.values = recv_msg.content
         else:
             var1 = variables[1]
             var2 = variables[0]
+            var1.domain.values = recv_msg.content
 
         # Calculate the costs
         cost_map = np.zeros(constraint.shape)

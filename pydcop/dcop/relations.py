@@ -1775,11 +1775,12 @@ class DynamicEnvironmentSimulationRelation(AbstractBaseRelation, SimpleRepr):
     A relation that connects to a simulation environment to compute cost.
     """
 
-    def __init__(self, name: str, computation):
+    def __init__(self, name: str, computation, variables):
         super().__init__(name)
         self._evt = threading.Event()
         self._returned_data = None
         self._comp = computation
+        self._variables = variables
 
     def get_value_for_assignment(self, assignment):
         # push message to sim environment

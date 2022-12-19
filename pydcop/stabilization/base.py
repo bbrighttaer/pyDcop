@@ -6,6 +6,7 @@ from pydcop.computations_graph import constraints_hypergraph, pseudotree
 from pydcop.computations_graph.dynamic_graph import DynamicComputationNode
 from pydcop.computations_graph.ordered_graph import ConstraintLink
 from pydcop.computations_graph.pseudotree import PseudoTreeLink
+from pydcop.dcop.objects import Variable
 from pydcop.dcop.relations import DynamicEnvironmentSimulationRelation
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.computations import MessagePassingComputation, Message, register
@@ -121,10 +122,11 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         for computation in self.agent.computations():
             if hasattr(computation, 'computation_def') and computation.computation_def is not None:
                 # send management command to run the computation
-                self.post_msg(
-                    target='_mgt_' + self.agent.name,
-                    msg=RunAgentMessage([computation.name])
-                )
+                if not computation.is_running:
+                    self.post_msg(
+                        target='_mgt_' + self.agent.name,
+                        msg=RunAgentMessage([computation.name])
+                    )
 
                 # send message to running computation
                 self.post_msg(
@@ -150,23 +152,26 @@ class DynamicDcopComputationMixin:
         # get msg components
         parent: Neighbor = recv_msg.data['parent']
         children: List[Neighbor] = recv_msg.data['children']
-        neighbors = [parent] if parent else []
-        neighbors += children
 
         # DCOP components
         self.variable.domain.values = recv_msg.data['domain']
 
         # update DCOP properties
-        constraint = DynamicEnvironmentSimulationRelation(f'ddcop-sim-rel-{self.name}', self)
-        constraints = [constraint]
+        constraints = []
         links = []
         dynamic_node: DynamicComputationNode = self.computation_def.node
 
         if dynamic_node.type == constraints_hypergraph.GRAPH_NODE_TYPE:
+            neighbors = [parent] if parent else []
+            neighbors += children
+
             # extract dcop computation names from neighbor computations' list
-            for n in neighbors:
-                for comp_name in n.computations:
+            for i, n in enumerate(neighbors):
+                for j, comp_name in enumerate(n.computations):
                     if 'var' in comp_name:
+                        variables = [Variable(self.name, recv_msg.data['domain']), Variable(comp_name, [])]
+                        constraint = DynamicEnvironmentSimulationRelation(f'c-{i}{j}', self, variables)
+                        constraints.append(constraint)
                         links.append(
                             ConstraintLink(
                                 name=constraint.name,
@@ -175,9 +180,12 @@ class DynamicDcopComputationMixin:
                         )
 
         elif dynamic_node.type == pseudotree.GRAPH_NODE_TYPE:
-            for n in children:
-                for comp_name in n.computations:
+            for i, n in enumerate(children):
+                for j, comp_name in enumerate(n.computations):
                     if 'var' in comp_name:
+                        variables = [Variable(self.name, recv_msg.data['domain']), Variable(comp_name, [])]
+                        constraint = DynamicEnvironmentSimulationRelation(f'c-{i}{j}', self, variables)
+                        constraints.append(constraint)
                         links.append(
                             PseudoTreeLink(
                                 link_type='children',
@@ -186,8 +194,11 @@ class DynamicDcopComputationMixin:
                             )
                         )
             if parent:
-                for comp_name in parent.computations:
+                for i, comp_name in enumerate(parent.computations):
                     if 'var' in comp_name:
+                        variables = [Variable(self.name, recv_msg.data['domain']), Variable(comp_name, [])]
+                        constraint = DynamicEnvironmentSimulationRelation(f'c-p{i}', self, variables)
+                        constraints.append(constraint)
                         links.append(
                             PseudoTreeLink(
                                 link_type='parent',
@@ -201,4 +212,8 @@ class DynamicDcopComputationMixin:
         dynamic_node.links = links
         dynamic_node.neighbors = list(set(n for l in links for n in l.nodes if n != dynamic_node.name))
         self.logger.debug(f'constraints = {constraints}, links = {links}, neighbors = {dynamic_node.neighbors}')
+
+        # trigger DCOP computation
+        if parent or children:
+            self.start_dcop()
 
