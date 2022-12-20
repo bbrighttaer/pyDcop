@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 from pydcop.infrastructure.computations import MessagePassingComputation
 
@@ -8,14 +8,18 @@ class SimulationEnvironment(MessagePassingComputation):
     Base class for all simulation environments used for D-DCOP
     """
 
-    def __init__(self, name, time_step_delay):
+    def __init__(self, name, time_step_delay, scenario):
         super(SimulationEnvironment, self).__init__(name)
+        self._events_iterator = iter(scenario) if scenario else None
         self._state_history = []
         self.time_step_delay = time_step_delay
         self.agents = {}
 
     def step(self):
         ...
+
+    def set_scenario(self, scenario):
+        self._events_iterator = iter(scenario) if scenario else None
 
     def display(self):
         self.logger.info(str(self))
@@ -50,6 +54,15 @@ class SimulationEnvironment(MessagePassingComputation):
 
     def send_constraint_evaluation_response(self, target, constraint_name, value):
         ...
+
+    def calculate_global_score(self) -> Tuple[int, float]:
+        """
+        Calculates the global cost or utility of the DCOP problem at a particular snapshot of the simulation.
+        Returns
+        -------
+        Returns a tuple: (number of constraints violated, cost/utility)
+        """
+        raise NotImplementedError('Global score logic is missing')
 
 
 class TimeStep:

@@ -285,6 +285,8 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
                 else:
                     self.select_value()
         else:
+            self.new_cycle()
+
             # construct best values of all neighbors
             min_index = random.choice(rho)
             var_values = {self.name: list(self.variable.domain.values)[min_index]}

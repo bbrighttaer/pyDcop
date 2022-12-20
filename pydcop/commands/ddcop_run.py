@@ -197,6 +197,7 @@ def run_cmd(args, timer=None, timeout=None):
         num_targets=2,
         scenario=scenario,
     )
+    dcop.simulation_environment = simulation_environment
 
     global orchestrator
     if args.mode == "thread":

@@ -306,6 +306,9 @@ class DCOP(object):
         return self.constraints[c_name]
 
     def solution_cost(self, assignment, infinity):
+        # use simulation environment to determine cost/utility if it is available
+        if hasattr(self, 'simulation_environment'):
+            return self.simulation_environment.calculate_global_score()
 
         # add external variables
         full_assignment = assignment.copy()

@@ -1,6 +1,7 @@
 import random
 import time
 from collections import defaultdict
+from typing import Tuple
 
 import numpy as np
 
@@ -14,9 +15,8 @@ random.seed(seed)
 class GridWorld(SimulationEnvironment):
     name = 'GridWorld'
 
-    def __init__(self, size, num_targets, scenario):
-        super(GridWorld, self).__init__(self.name, time_step_delay=5)
-        self._events_iterator = iter(scenario)
+    def __init__(self, size, num_targets, scenario=None):
+        super(GridWorld, self).__init__(self.name, time_step_delay=5, scenario=scenario)
         self.grid_size = size
         self.grid = {}
         self._current_time_step = -1
@@ -203,6 +203,9 @@ class GridWorld(SimulationEnvironment):
             constraint_name=msg.constraint_name,
             value=score,
         )
+
+    def calculate_global_score(self) -> Tuple[int, float]:
+        return 0, 0.
 
 
 class GridCell:
