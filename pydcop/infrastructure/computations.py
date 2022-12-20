@@ -38,6 +38,7 @@ your own DCOP algorithm.
 
 
 import logging
+import threading
 from functools import wraps
 from importlib import import_module
 from threading import Lock
@@ -504,16 +505,20 @@ class MessagePassingComputation(object, metaclass=ComputationMetaClass):
             event_bus.send(
                 "computations.message_rcv." + self.name, (self.name, msg.size)
             )
-            try:
-                self._decorated_handlers[msg.type](self, sender, msg, t)
-            except KeyError:
-                self._msg_handlers[msg.type](sender, msg, t)
+            # execute message handler on a separate thread
+            threading.Thread(target=self._handle_msg, args=(msg, sender, t)).start()
         else:
             self.logger.debug(
                 f"Storing message from {sender} to {self.name} {msg} . "
                 f"paused {self.is_paused}, running {self._running}"
             )
             self._paused_messages_recv.append((sender, msg, t))
+
+    def _handle_msg(self, msg, sender, t):
+        try:
+            self._decorated_handlers[msg.type](self, sender, msg, t)
+        except KeyError:
+            self._msg_handlers[msg.type](sender, msg, t)
 
     def post_msg(self, target: str, msg, prio: int = None, on_error=None):
         """

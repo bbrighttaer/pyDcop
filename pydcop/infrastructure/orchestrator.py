@@ -58,6 +58,7 @@ from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT, InP
 from pydcop.infrastructure.computations import Message, message_type, \
     MessagePassingComputation
 from pydcop.infrastructure.discovery import Directory, UnknownAgent, BroadcastMessage
+from pydcop.infrastructure.message_types import ConstraintEvaluationResponse
 from pydcop.reparation.removal import _removal_candidate_agents, \
     _removal_orphaned_computations, _removal_candidate_agt_info
 
@@ -510,6 +511,14 @@ class DynamicOrchestrator(Orchestrator):
                 )
             )
 
+            # override method for sending constraint evaluation response from sim environment to agent computations
+            self.simulation_environment.send_constraint_evaluation_response = notify_wrap(
+                self.simulation_environment.send_constraint_evaluation_response,
+                functools.partial(
+                    self.send_sim_env_constraint_evaluation_response,
+                )
+            )
+
         self.mgt.wait_stop_agents()
         self._own_agt.clean_shutdown()
         self._own_agt.join()
@@ -556,6 +565,12 @@ class DynamicOrchestrator(Orchestrator):
                         msg=msg.message,
                         prio=0,
                     )
+
+    def send_sim_env_constraint_evaluation_response(self, target, constraint_name, value):
+        self.mgt.post_msg(
+            target=target,
+            msg=ConstraintEvaluationResponse(constraint_name, value),
+        )
 
 
 ################################################################################
@@ -631,12 +646,12 @@ RunStabilizationMessage = message_type(
 
 # SimTimeStepChange is sent by the orchestrator to all agents when the simulation environment changes its times step
 SimTimeStepChanged = message_type(
-    'sim_time_step_change', ['data']
+    'sim_time_step_change', ['data'],
 )
 
 # Sent from a stabilization computation to DCOP computation(s)
 DcopExecutionMessage = message_type(
-    'dcop_execution_message', ['data']
+    'dcop_execution_message', ['data'],
 )
 
 

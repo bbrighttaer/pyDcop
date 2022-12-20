@@ -5,6 +5,7 @@ from collections import defaultdict
 import numpy as np
 
 from pydcop.envs import SimulationEnvironment
+from pydcop.infrastructure.message_types import ConstraintEvaluationRequest
 
 seed = 7
 random.seed(seed)
@@ -14,7 +15,7 @@ class GridWorld(SimulationEnvironment):
     name = 'GridWorld'
 
     def __init__(self, size, num_targets, scenario):
-        super(GridWorld, self).__init__(self.name, time_step_delay=2)
+        super(GridWorld, self).__init__(self.name, time_step_delay=5)
         self._events_iterator = iter(scenario)
         self.grid_size = size
         self.grid = {}
@@ -29,6 +30,9 @@ class GridWorld(SimulationEnvironment):
         m = np.random.rand(s, s)
         self._transition_function = m / m.sum(axis=1).reshape(-1, 1)
         self.scores = defaultdict(float)
+        self._msg_handlers.update({
+            'constraint_evaluation_request': self._on_constraint_evaluation_msg,
+        })
 
     def on_start(self):
         self.logger.debug('Started GridWorld simulation environment')
@@ -171,6 +175,35 @@ class GridWorld(SimulationEnvironment):
                 actions.append('right_down')
         return actions
 
+    def _on_constraint_evaluation_msg(self, sender: str, msg: ConstraintEvaluationRequest, t: float):
+        self.logger.debug(f'Received constraint evaluation msg: {msg} from {sender}')
+
+        selected_cells = {}
+        score = 0.
+
+        for k, val in msg.var_assignments.items():
+            if k.startswith('var'):
+                k = k.replace('var', 'a')
+                current_cell = self.agents[k].current_cell
+                action = getattr(current_cell, val)
+                selected_cells[k] = self.grid[action()]
+
+        if len(selected_cells) > 1:
+            unique_cells = list(set(selected_cells.values()))
+
+            if len(unique_cells) == 1:
+                score = unique_cells[0].get_num_targets() * 2
+
+            elif len(unique_cells) > 1:
+                score = unique_cells[0].get_num_targets() * 0.5
+
+        # send constraint evaluation result to computation (sender)
+        self.send_constraint_evaluation_response(
+            target=sender,
+            constraint_name=msg.constraint_name,
+            value=score,
+        )
+
 
 class GridCell:
     """
@@ -194,6 +227,20 @@ class GridCell:
 
     def add(self, o):
         self.contents.append(o)
+
+    def get_num_targets(self):
+        num = 0
+        for c in self.contents:
+            if isinstance(c, Target):
+                num += 1
+        return num
+
+    def get_num_agents(self):
+        num = 0
+        for c in self.contents:
+            if isinstance(c, MobileSensingAgent):
+                num += 1
+        return num
 
     def up(self):
         return str(self.i - 1) + '-' + str(self.j)
@@ -221,6 +268,9 @@ class GridCell:
 
     def __str__(self):
         return f'{self.cell_id}: {str([str(c) for c in self.contents])}'
+
+    def __hash__(self):
+        return hash(self.cell_id)
 
 
 class MobileSensingAgent:

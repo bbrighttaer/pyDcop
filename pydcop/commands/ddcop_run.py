@@ -266,6 +266,7 @@ def _orchestrator_error(e):
     print("Error in orchestrator: \n ", e)
     sys.exit(2)
 
+
 def _results(status):
     """
     Outputs results and metrics on stdout and trace last metrics in csv

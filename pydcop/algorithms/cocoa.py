@@ -7,9 +7,12 @@ import numpy as np
 from pydcop.algorithms import ComputationDef, AlgoParameterDef
 from pydcop.dcop.relations import Constraint
 from pydcop.infrastructure.computations import VariableComputation, Message, register
+from pydcop.infrastructure.message_types import ConstraintEvaluationResponse
+from pydcop.infrastructure.orchestrator import DcopExecutionMessage
 from pydcop.stabilization.base import DynamicDcopComputationMixin
 
-GRAPH_TYPE = "constraints_hypergraph"
+# GRAPH_TYPE = "constraints_hypergraph"
+GRAPH_TYPE = "pseudotree"
 MSG_PRIORITY = 1
 HOLD = "hold"
 DONE = "done"
@@ -96,6 +99,14 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
                 or self.computation_def.exec_mode == 'dynamic':
             msg = CoCoAMessage(CoCoAMessage.INQUIRY_MESSAGE, self.variable.domain.values)
             self.post_to_all_neighbors(msg, MSG_PRIORITY, on_error="fail")
+
+    @register("dcop_execution_message")
+    def _on_dcop_execution_message(self, sender: str, recv_msg: DcopExecutionMessage, t: int):
+        return super(CoCoA, self)._on_dcop_execution_message(sender, recv_msg, t)
+
+    @register("constraint_evaluation_response")
+    def _on_constraint_evaluation_response(self, sender: str, recv_msg: ConstraintEvaluationResponse, t: int):
+        super(CoCoA, self)._on_constraint_evaluation_response(sender, recv_msg, t)
 
     @register(CoCoAMessage.INQUIRY_MESSAGE)
     def _on_inquiry_message(self, variable_name: str, recv_msg: CoCoAMessage, t: int):

@@ -1,3 +1,4 @@
+import datetime
 import logging
 import time
 from typing import List, Callable, Union
@@ -11,6 +12,7 @@ from pydcop.dcop.relations import DynamicEnvironmentSimulationRelation
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.computations import MessagePassingComputation, Message, register
 from pydcop.infrastructure.discovery import Discovery
+from pydcop.infrastructure.message_types import ConstraintEvaluationResponse
 from pydcop.infrastructure.orchestrator import SimTimeStepChanged, DcopExecutionMessage, RunAgentMessage
 from pydcop.stabilization import Neighbor
 
@@ -149,6 +151,8 @@ class DynamicDcopComputationMixin:
     def _on_dcop_execution_message(self, sender: str, recv_msg: DcopExecutionMessage, t: int):
         self.logger.info(f'DCOP execution message: {recv_msg}')
 
+        ts = str(datetime.datetime.now().timestamp())
+
         # get msg components
         parent: Neighbor = recv_msg.data['parent']
         children: List[Neighbor] = recv_msg.data['children']
@@ -173,7 +177,7 @@ class DynamicDcopComputationMixin:
                             Variable(self.name, VariableDomain(self.name, self.name, recv_msg.data['domain'])),
                             Variable(comp_name, VariableDomain(comp_name, comp_name, []))
                         ]
-                        constraint = DynamicEnvironmentSimulationRelation(f'c-{i}{j}', self, variables)
+                        constraint = DynamicEnvironmentSimulationRelation(f'c-{self.name}-{i}{j}-{ts}', self, variables)
                         constraints.append(constraint)
                         links.append(
                             ConstraintLink(
@@ -190,7 +194,7 @@ class DynamicDcopComputationMixin:
                             Variable(self.name, VariableDomain(self.name, self.name, recv_msg.data['domain'])),
                             Variable(comp_name, VariableDomain(comp_name, comp_name, []))
                         ]
-                        constraint = DynamicEnvironmentSimulationRelation(f'c-{i}{j}', self, variables)
+                        constraint = DynamicEnvironmentSimulationRelation(f'c-{self.name}-{i}{j}-{ts}', self, variables)
                         constraints.append(constraint)
                         links.append(
                             PseudoTreeLink(
@@ -206,7 +210,7 @@ class DynamicDcopComputationMixin:
                             Variable(self.name, VariableDomain(self.name, self.name, recv_msg.data['domain'])),
                             Variable(comp_name, VariableDomain(comp_name, comp_name, []))
                         ]
-                        constraint = DynamicEnvironmentSimulationRelation(f'c-p{i}', self, variables)
+                        constraint = DynamicEnvironmentSimulationRelation(f'c-{self.name}-p{i}-{ts}', self, variables)
                         constraints.append(constraint)
                         links.append(
                             PseudoTreeLink(
@@ -225,4 +229,13 @@ class DynamicDcopComputationMixin:
         # trigger DCOP computation
         if parent or children:
             self.start_dcop()
+
+    @register('constraint_evaluation_response')
+    def _on_constraint_evaluation_response(self, sender: str, recv_msg: ConstraintEvaluationResponse, t: int):
+        self.logger.debug(f'Received constraint evaluation response: {recv_msg} from {sender}')
+
+        # set return value on the constraint that made the request
+        for c in self.computation_def.node.constraints:
+            if c.name == recv_msg.constraint_name and isinstance(c, DynamicEnvironmentSimulationRelation):
+                c.set_return_value(recv_msg.value)
 

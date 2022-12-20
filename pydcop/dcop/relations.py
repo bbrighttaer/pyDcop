@@ -37,7 +37,9 @@ from copy import deepcopy
 import numpy as np
 from typing import Dict, Iterable, Any, Tuple, Callable, List, Union
 
-from pydcop.dcop.objects import Variable
+from pydcop.dcop.objects import Variable, VariableDomain
+from pydcop.infrastructure.computations import MessagePassingComputation
+from pydcop.infrastructure.message_types import ConstraintEvaluationRequest
 from pydcop.utils.simple_repr import SimpleRepr
 from pydcop.utils.various import func_args
 from pydcop.utils.expressionfunction import ExpressionFunction
@@ -1775,26 +1777,38 @@ class DynamicEnvironmentSimulationRelation(AbstractBaseRelation, SimpleRepr):
     A relation that connects to a simulation environment to compute cost.
     """
 
-    def __init__(self, name: str, computation, variables):
+    def __init__(self, name: str, computation: MessagePassingComputation, variables: List[VariableDomain]):
         super().__init__(name)
         self._evt = threading.Event()
-        self._returned_data = None
+        self._return_value = None
         self._comp = computation
         self._variables = variables
 
     def get_value_for_assignment(self, assignment):
+        self._evt.clear()
+
         # push message to sim environment
+        self._comp.post_msg(
+            target='_sim_env_orchestrator',
+            msg=ConstraintEvaluationRequest(self.name, assignment),
+        )
 
         # wait for data from sim environment
-        # self._evt.wait()
+        while self._return_value is None:
+            continue
 
-        # return value
-        return 0.
+        v = self._return_value
+        self._return_value = None
+        return v
 
-    def set_returned_value(self, data):
-        self._returned_data = data
-        self._evt.set()
+    def set_return_value(self, value):
+        self._return_value = value
 
     def __call__(self, *args, **kwargs):
-        return 0.
+        if not kwargs:
+            if len(args) == 1 and type(args[0]) is dict:
+                return self(**args[0])
+            return self.get_value_for_assignment(list(args))
+        else:
+            return self.get_value_for_assignment(kwargs)
 
