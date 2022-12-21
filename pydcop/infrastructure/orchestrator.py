@@ -490,34 +490,33 @@ class DynamicOrchestrator(Orchestrator):
             # override run_stabilization method
             self.simulation_environment.run_stabilization_computation = notify_wrap(
                 self.simulation_environment.run_stabilization_computation,
-                functools.partial(
-                    self.mgt.run_stabilization_computation,
-                )
+                self.mgt.run_stabilization_computation,
             )
 
             # override remove_agent method
             self.simulation_environment.remove_agent = notify_wrap(
                 self.simulation_environment.remove_agent,
-                functools.partial(
-                    self.mgt.remove_agent,
-                )
+                self.mgt.remove_agent,
             )
 
             # override next_timestep method
             self.simulation_environment.next_time_step = notify_wrap(
                 self.simulation_environment.next_time_step,
-                functools.partial(
-                    self.on_sim_env_time_step_changed,
-                )
+                self.on_sim_env_time_step_changed,
             )
 
             # override method for sending constraint evaluation response from sim environment to agent computations
             self.simulation_environment.send_constraint_evaluation_response = notify_wrap(
                 self.simulation_environment.send_constraint_evaluation_response,
-                functools.partial(
-                    self.send_sim_env_constraint_evaluation_response,
-                )
+                self.send_sim_env_constraint_evaluation_response,
             )
+
+            # override method for handling value changes, so we can apply agent actions in the environment
+            self.mgt._on_value_change_msg = notify_wrap(
+                self.simulation_environment.on_action_selection,  # must come first before actual function
+                self.mgt._on_value_change_msg,
+            )
+            self.mgt._msg_handlers['value_change'] = self.mgt._on_value_change_msg
 
         self.mgt.wait_stop_agents()
         self._own_agt.clean_shutdown()

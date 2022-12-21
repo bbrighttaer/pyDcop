@@ -64,6 +64,12 @@ class SimulationEnvironment(MessagePassingComputation):
         """
         raise NotImplementedError('Global score logic is missing')
 
+    def on_action_selection(self, sender: str, msg: 'ValueChangeMessage', t: float):
+        """
+        Applies selected value in the environment.
+        """
+        ...
+
 
 class TimeStep:
     """

@@ -186,7 +186,9 @@ class GridWorld(SimulationEnvironment):
                 k = k.replace('var', 'a')
                 current_cell = self.agents[k].current_cell
                 action = getattr(current_cell, val)
-                selected_cells[k] = self.grid[action()]
+                cell = self.grid.get(action(), None)
+                if cell:
+                    selected_cells[k] = cell
 
         if len(selected_cells) > 1:
             unique_cells = list(set(selected_cells.values()))
@@ -203,6 +205,21 @@ class GridWorld(SimulationEnvironment):
             constraint_name=msg.constraint_name,
             value=score,
         )
+
+    def on_action_selection(self, sender: str, msg, t: float):
+        self.logger.info(f'Received action selection from {sender}: {msg}')
+
+        # apply action
+        agt = self.agents[msg.agent]
+        current_agt_cell = agt.current_cell
+        action = getattr(current_agt_cell, msg.value)
+        if action is not None:
+            new_cell = self.grid.get(action(), None)
+            if new_cell:
+                current_agt_cell.contents.remove(agt)
+                agt.current_cell = new_cell
+                new_cell.contents.append(agt)
+                self.logger.debug(f'Agent {msg.agent} changed from {current_agt_cell.cell_id} to {new_cell.cell_id}')
 
     def calculate_global_score(self) -> Tuple[int, float]:
         return 0, 0.
@@ -290,6 +307,9 @@ class MobileSensingAgent:
     def __str__(self):
         return f'Agent(id={self.player_id}, cred={self.credibility})'
 
+    def __hash__(self):
+        return hash(self.player_id)
+
 
 class Target:
 
@@ -301,3 +321,6 @@ class Target:
 
     def __str__(self):
         return f'Target(target_id={self.target_id}, cov_req={self.coverage_requirement}, is_active={self.is_active})'
+
+    def __hash__(self):
+        return hash(self.target_id)
