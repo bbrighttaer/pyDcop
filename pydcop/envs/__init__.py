@@ -32,7 +32,7 @@ class SimulationEnvironment(MessagePassingComputation):
         return str(self.history)
 
     def on_simulation_ended(self):
-        self.logger.debug(f'Simulation ended')
+        ...
 
     def run_stabilization_computation(self, agent):
         ...

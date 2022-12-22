@@ -12,6 +12,110 @@ seed = 7
 random.seed(seed)
 
 
+class GridCell:
+    """
+    Models a cell in the GridWorld environment.
+
+    The cell and its neighbors:
+    .-----------.------.------------.
+    | left_up   | up   | right_up   |
+    :-----------+------+------------:
+    | left      | cell | right      |
+    :-----------+------+------------:
+    | left_down | down | right_down |
+    '-----------'------'------------'
+    """
+
+    def __init__(self, i, j):
+        self.i = i
+        self.j = j
+        self.cell_id = f'{i}-{j}'
+        self.contents = []
+
+    def add(self, o):
+        self.contents.append(o)
+
+    def get_num_active_targets(self):
+        num = 0
+        for c in self.contents:
+            if isinstance(c, Target): # and c.is_active:
+                num += 1
+        return num
+
+    def get_num_agents(self):
+        num = 0
+        for c in self.contents:
+            if isinstance(c, MobileSensingAgent):
+                num += 1
+        return num
+
+    def remove_detected_targets(self):
+        ...
+
+    def up(self):
+        return str(self.i - 1) + '-' + str(self.j)
+
+    def down(self):
+        return str(self.i + 1) + '-' + str(self.j)
+
+    def left(self):
+        return str(self.i) + '-' + str(self.j - 1)
+
+    def right(self):
+        return str(self.i) + '-' + str(self.j + 1)
+
+    def left_up(self):
+        return str(self.i - 1) + '-' + str(self.j - 1)
+
+    def left_down(self):
+        return str(self.i + 1) + '-' + str(self.j - 1)
+
+    def right_up(self):
+        return str(self.i - 1) + '-' + str(self.j + 1)
+
+    def right_down(self):
+        return str(self.i + 1) + '-' + str(self.j + 1)
+
+    def __str__(self):
+        return f'{self.cell_id}: {str([str(c) for c in self.contents])}'
+
+    def __hash__(self):
+        return hash(self.cell_id)
+
+
+class MobileSensingAgent:
+
+    def __init__(self, player_id, cell):
+        super().__init__()
+        self.player_id = player_id
+        self.current_cell = cell
+        self.credibility = 5
+        self.sensing_range = 1
+        self.mobility_range = 2
+        self.communication_range = 3
+
+    def __str__(self):
+        return f'Agent(id={self.player_id}, cred={self.credibility})'
+
+    def __hash__(self):
+        return hash(self.player_id)
+
+
+class Target:
+
+    def __init__(self, target_id, cell, cov_req):
+        self.target_id = target_id
+        self.current_cell = cell
+        self.coverage_requirement = cov_req
+        self.is_active = True
+
+    def __str__(self):
+        return f'Target(target_id={self.target_id}, cov_req={self.coverage_requirement}, is_active={self.is_active})'
+
+    def __hash__(self):
+        return hash(self.target_id)
+
+
 class GridWorld(SimulationEnvironment):
     name = 'GridWorld'
 
@@ -121,7 +225,7 @@ class GridWorld(SimulationEnvironment):
         sensor = self.agents.get(agent_id, None)
         return {
             'current_position': sensor.current_cell.cell_id,
-            'score': 0. if sensor is None else self.scores[agent_id],  # score in the just ended time step
+            'score': self.calc_agent_score(self.agents[agent_id]),  # score in the just ended time step
             'agents_in_comm_range': [] if sensor is None else self.get_agents_in_communication_range(agent_id),
             'agent_domain': self._get_legit_actions(self.agents[agent_id].current_cell),
         }
@@ -194,10 +298,10 @@ class GridWorld(SimulationEnvironment):
             unique_cells = list(set(selected_cells.values()))
 
             if len(unique_cells) == 1:
-                score = unique_cells[0].get_num_targets() * 2
+                score = unique_cells[0].get_num_active_targets() * 2
 
             elif len(unique_cells) > 1:
-                score = unique_cells[0].get_num_targets() * 0.5
+                score = selected_cells[sender.replace('var', 'a')].get_num_active_targets() * 0.5
 
         # send constraint evaluation result to computation (sender)
         self.send_constraint_evaluation_response(
@@ -221,106 +325,33 @@ class GridWorld(SimulationEnvironment):
                 new_cell.contents.append(agt)
                 self.logger.debug(f'Agent {msg.agent} changed from {current_agt_cell.cell_id} to {new_cell.cell_id}')
 
-    def calculate_global_score(self) -> Tuple[int, float]:
-        return 0, 0.
+    def calculate_global_score(self) -> Tuple[int, float]:  # number of violations, score
+        score = 0.
+        for agt in self.agents:
+            score += self.calc_agent_score(self.agents[agt])
+        self._disable_detected_targets()
+        return 0, score
+
+    def calc_agent_score(self, agent: MobileSensingAgent):
+        score = 0.
+        num_agents_in_cell = agent.current_cell.get_num_agents()
+        num_targets_in_cell = agent.current_cell.get_num_active_targets()
+
+        if num_agents_in_cell > 1:
+            score = num_targets_in_cell * 2.
+        elif num_agents_in_cell == 1:
+            score = num_targets_in_cell * 0.5
+
+        return score
+
+    def _disable_detected_targets(self):
+        """
+        To be called after computing scores of all agents.
+        """
+        for agt in self.agents:
+            for c in self.agents[agt].current_cell.contents:
+                if isinstance(c, Target):
+                    c.is_active = False
 
 
-class GridCell:
-    """
-    Models a cell in the GridWorld environment.
 
-    The cell and its neighbors:
-    .-----------.------.------------.
-    | left_up   | up   | right_up   |
-    :-----------+------+------------:
-    | left      | cell | right      |
-    :-----------+------+------------:
-    | left_down | down | right_down |
-    '-----------'------'------------'
-    """
-
-    def __init__(self, i, j):
-        self.i = i
-        self.j = j
-        self.cell_id = f'{i}-{j}'
-        self.contents = []
-
-    def add(self, o):
-        self.contents.append(o)
-
-    def get_num_targets(self):
-        num = 0
-        for c in self.contents:
-            if isinstance(c, Target):
-                num += 1
-        return num
-
-    def get_num_agents(self):
-        num = 0
-        for c in self.contents:
-            if isinstance(c, MobileSensingAgent):
-                num += 1
-        return num
-
-    def up(self):
-        return str(self.i - 1) + '-' + str(self.j)
-
-    def down(self):
-        return str(self.i + 1) + '-' + str(self.j)
-
-    def left(self):
-        return str(self.i) + '-' + str(self.j - 1)
-
-    def right(self):
-        return str(self.i) + '-' + str(self.j + 1)
-
-    def left_up(self):
-        return str(self.i - 1) + '-' + str(self.j - 1)
-
-    def left_down(self):
-        return str(self.i + 1) + '-' + str(self.j - 1)
-
-    def right_up(self):
-        return str(self.i - 1) + '-' + str(self.j + 1)
-
-    def right_down(self):
-        return str(self.i + 1) + '-' + str(self.j + 1)
-
-    def __str__(self):
-        return f'{self.cell_id}: {str([str(c) for c in self.contents])}'
-
-    def __hash__(self):
-        return hash(self.cell_id)
-
-
-class MobileSensingAgent:
-
-    def __init__(self, player_id, cell):
-        super().__init__()
-        self.player_id = player_id
-        self.current_cell = cell
-        self.credibility = 5
-        self.sensing_range = 1
-        self.mobility_range = 2
-        self.communication_range = 3
-
-    def __str__(self):
-        return f'Agent(id={self.player_id}, cred={self.credibility})'
-
-    def __hash__(self):
-        return hash(self.player_id)
-
-
-class Target:
-
-    def __init__(self, target_id, cell, cov_req):
-        self.target_id = target_id
-        self.current_cell = cell
-        self.coverage_requirement = cov_req
-        self.is_active = True
-
-    def __str__(self):
-        return f'Target(target_id={self.target_id}, cov_req={self.coverage_requirement}, is_active={self.is_active})'
-
-    def __hash__(self):
-        return hash(self.target_id)

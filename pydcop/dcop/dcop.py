@@ -308,6 +308,10 @@ class DCOP(object):
     def solution_cost(self, assignment, infinity):
         # use simulation environment to determine cost/utility if it is available
         if hasattr(self, 'simulation_environment'):
+            if len(self.all_variables) != len(assignment):
+                raise ValueError('Cannot compute solution cost : incomplete '
+                                 'assignment, missing values for vars {}'
+                                 .format(set(self.all_variables) - set(assignment)))
             return self.simulation_environment.calculate_global_score()
 
         # add external variables

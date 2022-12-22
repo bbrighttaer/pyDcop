@@ -222,9 +222,9 @@ class Agent(object):
                 computation._on_new_cycle,
                 partial(self._on_computation_new_cycle, computation.name))
 
-        computation.finished = notify_wrap(
-            computation.finished,
-            partial(self._on_computation_finished, computation.name))
+        # computation.finished = notify_wrap(
+        #     computation.finished,
+        #     partial(self._on_computation_finished, computation.name))
 
         event_bus.send("agents.add_computation."+self.name,
                        (self.name, computation))

@@ -451,6 +451,9 @@ class DynamicOrchestrator(Orchestrator):
             )
             self._own_agt.run(self.simulation_environment.name)
 
+        # monitor end of simulation
+        self._sim_end_t.start()
+
     def start_replication(self, k_target: int):
         self.logger.warning(f"Replication is not supported by {self.__class__.__name__}")
 
@@ -480,7 +483,7 @@ class DynamicOrchestrator(Orchestrator):
 
             # dynamically override the on_simulation_ended cb of simulation environment to remove periodic action
             self.simulation_environment.on_simulation_ended = notify_wrap(
-                self.simulation_environment.on_simulation_ended,
+                self.on_simulation_ended,
                 functools.partial(
                     self.agent.remove_periodic_action,
                     cb,
@@ -570,6 +573,10 @@ class DynamicOrchestrator(Orchestrator):
             target=target,
             msg=ConstraintEvaluationResponse(constraint_name, value),
         )
+
+    def on_simulation_ended(self):
+        self.logger.debug(f'Simulation ended')
+        self.scenario_complete_event.set()
 
 
 ################################################################################

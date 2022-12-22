@@ -53,8 +53,8 @@ class CCoCoA(CoCoA):
         return super()._on_update_state_message(variable_name, recv_msg, t)
 
     @register(CoCoAMessage.START_DCOP_MESSAGE)
-    def _on_start_dcop(self, variable_name: str, recv_msg: CoCoAMessage, t: int):
-        return super()._on_start_dcop(variable_name, recv_msg, t)
+    def _on_start_dcop_msg(self, variable_name: str, recv_msg: CoCoAMessage, t: int):
+        return super()._on_start_dcop_msg(variable_name, recv_msg, t)
 
     @register("dcop_execution_message")
     def _on_dcop_execution_message(self, sender: str, recv_msg: DcopExecutionMessage, t: int):

@@ -506,7 +506,7 @@ class MessagePassingComputation(object, metaclass=ComputationMetaClass):
                 "computations.message_rcv." + self.name, (self.name, msg.size)
             )
             # execute message handler on a separate thread
-            threading.Thread(target=self._handle_msg, args=(msg, sender, t)).start()
+            threading.Thread(target=self._handle_msg, args=(msg, sender, t), daemon=True).start()
         else:
             self.logger.debug(
                 f"Storing message from {sender} to {self.name} {msg} . "
@@ -1022,6 +1022,10 @@ class VariableComputation(DcopComputation):
         :return:
         """
         return self.__value__
+
+    @current_value.setter
+    def current_value(self, v):
+        self.__value__ = v
 
     @property
     def current_cost(self):

@@ -19,6 +19,7 @@ DONE = "done"
 IDLE = "idle"
 algo_params = [
     AlgoParameterDef("execution_order", "str", ["top-down", "bottom-up"], "bottom-up"),
+    AlgoParameterDef("optimization", "str", ["min", "max"], "min"),
 ]
 
 
@@ -78,15 +79,25 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         assert "cocoa" in comp_def.algo.algo
 
         super(CoCoA, self).__init__(comp_def.node.variable, comp_def)
+        self.optimization_op = comp_def.algo.param_value('optimization')  # minimization or maximization
+        self._initialize()
 
+    def _initialize(self):
         # for determining HOLD state
         self.beta = 1
         self.status = IDLE
-        self.hold_state_history = []  # keeps track of neighbors in HOLD state
-        self.done_state_history = []  # keeps track of neighbors in DONE state
+
+        # keeps track of neighbors in HOLD state
+        self.hold_state_history = []
+
+        # keeps track of neighbors in DONE state
+        self.done_state_history = []
 
         # stores data in var: cost_map format
         self.cost_msgs = {}
+
+        # clear value
+        self.current_value = None
 
     def on_start(self):
         self.logger.debug(f"Starting {self.name}")
@@ -94,11 +105,29 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
 
     def start_dcop(self, neighbor_triggered=False):
         # check if this computation can start
-        if neighbor_triggered \
-                or self.computation_def.node.variable.kwargs.get("initiator", False)\
-                or self.computation_def.exec_mode == 'dynamic':
+        parent = self.get_parent()
+        if (not parent or neighbor_triggered) and self.neighbors:
+            # initialize algorithm properties
+            if not neighbor_triggered:
+                self._initialize()
+
+            # send inquiry messages
             msg = CoCoAMessage(CoCoAMessage.INQUIRY_MESSAGE, self.variable.domain.values)
             self.post_to_all_neighbors(msg, MSG_PRIORITY, on_error="fail")
+        else:
+            self.execute_neighbor_comp()
+
+    def get_parent(self):
+        for link in self.computation_def.node.links:
+            if link.type == 'parent':
+                return link.target
+
+    def get_children(self):
+        children = []
+        for link in self.computation_def.node.links:
+            if link.type == 'children':
+                children.append(link.target)
+        return children
 
     @register("dcop_execution_message")
     def _on_dcop_execution_message(self, sender: str, recv_msg: DcopExecutionMessage, t: int):
@@ -125,7 +154,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         self.logger.debug(f"{CoCoAMessage.INQUIRY_MESSAGE} from {variable_name} : {recv_msg.content} at {t}")
 
         # select the constraint
-        constraint: Constraint = None
+        constraint = None
 
         # find the constraint that is applicable
         for c in self.computation_def.node.constraints:
@@ -159,17 +188,23 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
                 self._calc_cost(constraint, cost_map, d1, i, var1, var2)
 
             # reduce cost map to array
-            cost_map_min = cost_map.min(axis=0).tolist()
+            if self.optimization_op == 'min':
+                cost_map_min = cost_map.min(axis=0).tolist()
+            else:
+                cost_map_min = cost_map.max(axis=0).tolist()
 
         # select the indices that yielded the min values
-        cost_map_min_indices = cost_map.argmin(axis=0)
+        if self.optimization_op == 'min':
+            cost_map_indices = cost_map.argmin(axis=0)
+        else:
+            cost_map_indices = cost_map.argmax(axis=0)
 
-        # map the min value indices in the cost map to their domain values
+        # map the optimal value indices in the cost map to their domain values
         domain_values = list(self.variable.domain.values)
-        min_cost_domain_vals = [self.current_value] * len(domain_values) if self.current_value \
-            else [domain_values[i] for i in cost_map_min_indices]
+        cost_domain_vals = [self.current_value] * len(domain_values) if self.current_value \
+            else [domain_values[i] for i in cost_map_indices]
 
-        cost_msg = {"cost_map": cost_map_min, "min_cost_domain_vals": min_cost_domain_vals}
+        cost_msg = {"cost_map": cost_map_min, "cost_domain_vals": cost_domain_vals}
 
         # send cost message
         self.post_msg(variable_name, CoCoAMessage(CoCoAMessage.COST_MESSAGE, cost_msg), MSG_PRIORITY, on_error="fail")
@@ -203,8 +238,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
 
         # check if all neighbors have responded to cost inquiries
         self.logger.debug(f'{self.neighbors}, {self.cost_msgs}, {self.computation_def.exec_mode}')
-        if (len(self.neighbors) == len(self.cost_msgs) and not self.current_value)\
-                or self.computation_def.exec_mode == 'dynamic':
+        if len(self.neighbors) == len(self.cost_msgs):
             try:
                 self.select_value()
             except KeyError as e:
@@ -228,6 +262,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
 
         if recv_msg.content == HOLD:
             self.hold_state_history.append(variable_name)
+            self.start_dcop(neighbor_triggered=True)
         elif recv_msg.content == DONE:
             self.done_state_history.append(variable_name)
 
@@ -236,7 +271,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
                 self.execute_neighbor_comp()
 
     @register(CoCoAMessage.START_DCOP_MESSAGE)
-    def _on_start_dcop(self, variable_name: str, recv_msg: CoCoAMessage, t: int):
+    def _on_start_dcop_msg(self, variable_name: str, recv_msg: CoCoAMessage, t: int):
         """
         Triggered by a neighbor to initiate the DCOP computation.
 
@@ -261,9 +296,19 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         """
         self.logger.debug(f"Attempting value selection for {self.name}")
 
-        # select domain indices with minimum cost
-        delta = np.array([c["cost_map"] for c in self.cost_msgs.values()]).sum(axis=0, keepdims=True)
-        rho = np.argmin(delta, axis=1)
+        # select domain indices with min/max cost
+        cost_matrix = np.array([c["cost_map"] for c in self.cost_msgs.values()])
+        delta = cost_matrix.sum(axis=0)
+        if self.optimization_op == 'min':
+            min_val = delta.min()
+            opt_indices = np.asarray(delta == min_val).nonzero()[0]
+            d_vals = np.array(self.variable.domain.values)
+            rho = d_vals[opt_indices].tolist()
+        else:
+            max_val = delta.max()
+            opt_indices = np.asarray(delta == max_val).nonzero()[0]
+            d_vals = np.array(self.variable.domain.values)
+            rho = d_vals[opt_indices].tolist()
 
         # determine if a HOLD state is needed
         if len(rho) > self.beta:
@@ -288,10 +333,11 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
             self.new_cycle()
 
             # construct best values of all neighbors
-            min_index = random.choice(rho)
-            var_values = {self.name: list(self.variable.domain.values)[min_index]}
+            val = random.choice(rho)
+            min_index = opt_indices[0]
+            var_values = {self.name: val}
             for agent in self.neighbors:
-                var_values[agent] = self.cost_msgs[agent]["min_cost_domain_vals"][min_index]
+                var_values[agent] = self.cost_msgs[agent]["cost_domain_vals"][min_index]
 
             # compute cost
             cost, value = self._calculate_cost(var_values)
@@ -332,26 +378,16 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         Randomly select a neighbor to trigger execution
         """
         self.logger.debug("Selecting neighbor to start")
-        # available_neighbors = set(self.neighbors) - set(self.done_state_history)
-        neighbors = []
-        for link in self.computation_def.node.links:
-            if link.type == "parent" and self.computation_def.algo.param_value("execution_order") == "bottom-up":
-                neighbors.append(link.target)
-            elif link.type == "children" and self.computation_def.algo.param_value("execution_order") == "top-down":
-                neighbors.append(link.target)
-            else:
-                neighbors.append(link.target)
-
-        if neighbors:
-            available_neighbors = set(self.neighbors) - set(self.done_state_history)
-            for neighbor in available_neighbors:
-                self.logger.debug(f"Neighbor {neighbor} selected to start")
-                self.post_msg(neighbor, CoCoAMessage(CoCoAMessage.START_DCOP_MESSAGE, None), on_error="fail")
+        available_neighbors = set(self.neighbors) - set(self.done_state_history)
+        for neighbor in available_neighbors:
+            self.logger.debug(f"Neighbor {neighbor} selected to start")
+            self.post_msg(neighbor, CoCoAMessage(CoCoAMessage.START_DCOP_MESSAGE, None), on_error="fail")
         else:
             self.logger.debug(f"No neighbor is available to start, done history: {self.done_state_history}")
+
+        if self.computation_def.exec_mode != 'dynamic':
+            self.stop()
             self.finished()
-            if self.computation_def.exec_mode != 'dynamic':
-                self.stop()
 
     def finished(self):
         self.done_state_history.clear()
