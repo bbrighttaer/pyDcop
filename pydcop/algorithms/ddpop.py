@@ -241,6 +241,10 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
     def _on_constraint_evaluation_response(self, sender: str, recv_msg, t: int):
         super()._on_constraint_evaluation_response(sender, recv_msg, t)
 
+    @register('agent_moved')
+    def _on_agent_moved_msg(self, sender: str, recv_msg, t: int):
+        super()._on_agent_moved_msg(sender, recv_msg, t)
+
     def start_dcop(self):
         self._initialize()
         self.on_start_dcop()
@@ -260,7 +264,7 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
             self.post_msg(self._parent, msg)
 
         elif self.is_leaf:
-            # we are both root and leaf : means we are a isolated variable we
+            # we are both root and leaf : means we are an isolated variable we
             #  can select our own value alone:
             if self._constraints:
                 for r in self._constraints:
@@ -316,8 +320,8 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
         """
 
         self.value_selection(value, cost)
-        self.stop()
-        self.finished()
+        # self.stop()
+        # self.finished()
         self.logger.info(f"Value selected at {self.name} : {value} - {cost}")
 
     @register("UTIL")

@@ -120,7 +120,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         # self.add_periodic_action(self.keep_alive_check_interval, self._inspect_connections)
         # self.add_periodic_action(self.keep_alive_msg_interval, self._send_keep_alive_msg)
 
-    def connect(self, cb: Callable[[str], None] = None):
+    def connect(self):
         """
         Broadcasts an Announce message to get a parent agent or connect to another agent.
 
@@ -304,8 +304,12 @@ class DIGCA(DynamicGraphConstructionComputation):
         # remove agents that are out of range
         self._inspect_connections(msg.data['agents_in_comm_range'])
 
-        # execute DCOP computations after Connect call
-        self.connect(cb=self.execute_computations)
+        # broadcast connection request
+        self.connect()
+
+        # cater for single agent case
+        if len(self.neighbors) == 0:
+            self.execute_computations(exec_order='single-agent')
 
     def _phi(self, agt_id) -> bool:
         """

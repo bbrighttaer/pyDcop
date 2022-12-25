@@ -12,7 +12,7 @@ from pydcop.dcop.relations import DynamicEnvironmentSimulationRelation
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.computations import MessagePassingComputation, Message, register
 from pydcop.infrastructure.discovery import Discovery
-from pydcop.infrastructure.message_types import ConstraintEvaluationResponse
+from pydcop.infrastructure.message_types import ConstraintEvaluationResponse, AgentMovedMessage
 from pydcop.infrastructure.orchestrator import SimTimeStepChanged, DcopExecutionMessage, RunAgentMessage
 from pydcop.stabilization import Neighbor
 
@@ -158,7 +158,10 @@ class DynamicDcopComputationMixin:
     def _on_dcop_execution_message(self, sender: str, recv_msg: DcopExecutionMessage, t: int):
         self.logger.info(f'DCOP execution message: {recv_msg}')
 
-        self.record_current_position(recv_msg.data['current_position'])
+        # when starting, record the starting position of the agent.
+        # subsequent position information are carried by AgentMovedMessage
+        if not hasattr(self, 'position_history'):
+            self.record_current_position(recv_msg.data['current_position'])
 
         ts = str(datetime.datetime.now().timestamp())
 
@@ -236,8 +239,7 @@ class DynamicDcopComputationMixin:
         self.logger.debug(f'constraints = {constraints}, links = {links}, neighbors = {dynamic_node.neighbors}')
 
         # trigger DCOP computation
-        if parent or children:
-            self.start_dcop()
+        self.start_dcop()
 
     @register('constraint_evaluation_response')
     def _on_constraint_evaluation_response(self, sender: str, recv_msg: ConstraintEvaluationResponse, t: int):
@@ -247,6 +249,10 @@ class DynamicDcopComputationMixin:
         for c in self.computation_def.node.constraints:
             if c.name == recv_msg.constraint_name and isinstance(c, DynamicEnvironmentSimulationRelation):
                 c.set_return_value(recv_msg.value)
+
+    @register('agent_moved')
+    def _on_agent_moved_msg(self, sender: str, recv_msg: AgentMovedMessage, t: int):
+        self.record_current_position(recv_msg.position)
 
     def record_current_position(self, position):
         if not hasattr(self, 'position_history'):

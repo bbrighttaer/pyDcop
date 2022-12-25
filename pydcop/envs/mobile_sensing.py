@@ -307,7 +307,7 @@ class GridWorld(SimulationEnvironment):
             value=score,
         )
 
-    def on_action_selection(self, sender: str, msg, t: float):
+    def on_action_selection(self, on_action_cb, sender: str, msg, t: float):
         self.logger.info(f'Received action selection from {sender}: {msg}')
 
         # apply action
@@ -321,6 +321,9 @@ class GridWorld(SimulationEnvironment):
                 agt.current_cell = new_cell
                 new_cell.contents.append(agt)
                 self.logger.debug(f'Agent {msg.agent} changed from {current_agt_cell.cell_id} to {new_cell.cell_id}')
+
+                if callable(on_action_cb):
+                    on_action_cb(target=sender, position=new_cell.cell_id)
 
     def calculate_global_score(self) -> Tuple[int, float]:  # number of violations, score
         score = 0.

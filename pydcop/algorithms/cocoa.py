@@ -137,6 +137,10 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
     def _on_constraint_evaluation_response(self, sender: str, recv_msg: ConstraintEvaluationResponse, t: int):
         super(CoCoA, self)._on_constraint_evaluation_response(sender, recv_msg, t)
 
+    @register('agent_moved')
+    def _on_agent_moved_msg(self, sender: str, recv_msg, t: int):
+        super()._on_agent_moved_msg(sender, recv_msg, t)
+
     @register(CoCoAMessage.INQUIRY_MESSAGE)
     def _on_inquiry_message(self, variable_name: str, recv_msg: CoCoAMessage, t: int):
         """

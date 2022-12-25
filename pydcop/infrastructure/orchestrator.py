@@ -58,7 +58,7 @@ from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT, InP
 from pydcop.infrastructure.computations import Message, message_type, \
     MessagePassingComputation
 from pydcop.infrastructure.discovery import Directory, UnknownAgent, BroadcastMessage
-from pydcop.infrastructure.message_types import ConstraintEvaluationResponse
+from pydcop.infrastructure.message_types import ConstraintEvaluationResponse, AgentMovedMessage
 from pydcop.reparation.removal import _removal_candidate_agents, \
     _removal_orphaned_computations, _removal_candidate_agt_info
 
@@ -516,7 +516,11 @@ class DynamicOrchestrator(Orchestrator):
 
             # override method for handling value changes, so we can apply agent actions in the environment
             self.mgt._on_value_change_msg = notify_wrap(
-                self.simulation_environment.on_action_selection,  # must come first before actual function
+                # must come first before actual function for the purposes of cost calculation in _on_value_change_msg
+                functools.partial(
+                    self.simulation_environment.on_action_selection,
+                    self._on_agent_moved_cb
+                ),
                 self.mgt._on_value_change_msg,
             )
             self.mgt._msg_handlers['value_change'] = self.mgt._on_value_change_msg
@@ -528,7 +532,7 @@ class DynamicOrchestrator(Orchestrator):
     def _end_dynamic_simulation(self):
         self.scenario_complete_event.wait()
         self.logger.info('All Dynamic DCOP computation have finished : stop')
-        # self.mgt._orchestrator_stop_agents()
+        self.mgt._orchestrator_stop_agents()
         self.logger.info(f'Final graph: {self._current_graph.edges.data()}')
 
     def on_sim_env_time_step_changed(self):
@@ -573,6 +577,14 @@ class DynamicOrchestrator(Orchestrator):
             target=target,
             msg=ConstraintEvaluationResponse(constraint_name, value),
         )
+
+    def _on_agent_moved_cb(self, *args, **kwargs):
+        if 'target' in kwargs and 'position' in kwargs:
+            # send movement confirmation
+            self.mgt.post_msg(
+                target=kwargs['target'],
+                msg=AgentMovedMessage(position=kwargs['position']),
+            )
 
     def on_simulation_ended(self):
         self.logger.debug(f'Simulation ended')

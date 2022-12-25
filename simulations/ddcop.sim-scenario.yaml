@@ -7,10 +7,10 @@ events:
     agent: a0
 #- id: w1
 #  delay: 10
-- id: e1
-  actions:
-  - type: add_agent
-    agent: a1
+#- id: e1
+#  actions:
+#  - type: add_agent
+#    agent: a1
 #- id: w2
 #  delay: 10
 #- id: e2

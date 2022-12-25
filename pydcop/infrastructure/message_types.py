@@ -7,3 +7,7 @@ ConstraintEvaluationRequest = message_type(
 ConstraintEvaluationResponse = message_type(
     'constraint_evaluation_response', ['constraint_name', 'value'],
 )
+
+AgentMovedMessage = message_type(
+    'agent_moved', ['position']
+)

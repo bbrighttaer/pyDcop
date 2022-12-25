@@ -42,6 +42,7 @@ from pydcop.infrastructure.computations import (
     build_computation,
 )
 from pydcop.infrastructure.discovery import Address
+from pydcop.infrastructure.message_types import AgentMovedMessage
 from pydcop.infrastructure.orchestrator import (
     DeployMessage,
     RunAgentMessage,
@@ -284,6 +285,7 @@ class OrchestrationComputation(MessagePassingComputation):
             # When requested to run stabilization computation
             "run_stabilization": self._on_run_stabilization_computation,
             "sim_time_step_change": self._on_simulation_time_step_change,
+            "agent_moved": self._on_agent_moved,
         }
 
     @property
@@ -395,6 +397,17 @@ class OrchestrationComputation(MessagePassingComputation):
             msg=msg,
             prio=MSG_ALGO,
         )
+
+    def _on_agent_moved(self, sender: str, msg: AgentMovedMessage, t: float):
+        self.logger.info(f'Agent movement confirmation: {msg}')
+
+        for computation in self.agent.computations():
+            # forward agent movement message to computation
+            if hasattr(computation, 'computation_def') and computation.computation_def is not None:
+                self.post_msg(
+                    target=computation.name,
+                    msg=msg,
+                )
 
     def on_computation_value_changed(self, computation: str, value, cost, cycle):
         """
