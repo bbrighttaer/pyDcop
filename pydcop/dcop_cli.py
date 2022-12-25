@@ -45,6 +45,8 @@ from os import path
 import sys
 from logging.config import fileConfig
 from threading import Timer
+import random
+import numpy as np
 
 import functools
 
@@ -59,6 +61,10 @@ from pydcop.commands import run_fmddcop
 
 cli_timer = None
 TIMEOUT_SLACK = 40
+
+seed = 7
+random.seed(seed)
+np.random.seed(seed )
 
 
 def main():

@@ -240,7 +240,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         self.logger.debug(f'{self.neighbors}, {self.cost_msgs}, {self.computation_def.exec_mode}')
         if len(self.neighbors) == len(self.cost_msgs):
             try:
-                self.select_value()
+                self.select_random_value()
             except KeyError as e:
                 self.logger.debug(f'Aborting, cannot find a variable: {str(e)}')
 
@@ -263,6 +263,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         if recv_msg.content == HOLD:
             self.hold_state_history.append(variable_name)
             self.start_dcop(neighbor_triggered=True)
+
         elif recv_msg.content == DONE:
             self.done_state_history.append(variable_name)
 
@@ -288,6 +289,13 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
             self.execute_neighbor_comp()
         else:
             self.start_dcop(neighbor_triggered=True)
+
+    def select_random_value(self):
+        self.new_cycle()
+        value = random.choice(self.variable.domain.values)
+        self.logger.debug(f'selected value: {value}')
+        self.value_selection(value, 10)
+        self.execute_neighbor_comp()
 
     def select_value(self):
         """
@@ -382,8 +390,6 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         for neighbor in available_neighbors:
             self.logger.debug(f"Neighbor {neighbor} selected to start")
             self.post_msg(neighbor, CoCoAMessage(CoCoAMessage.START_DCOP_MESSAGE, None), on_error="fail")
-        else:
-            self.logger.debug(f"No neighbor is available to start, done history: {self.done_state_history}")
 
         if self.computation_def.exec_mode != 'dynamic':
             self.stop()

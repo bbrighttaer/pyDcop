@@ -1,5 +1,5 @@
 name: test-ddcop
-objective: min
+objective: max
 domains:
   d0:
     values:

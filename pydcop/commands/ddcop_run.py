@@ -135,10 +135,12 @@ DISTRIBUTION_METHODS = [
 def run_cmd(args, timer=None, timeout=None):
     logger.debug(f'dcop command "ddcop_run" with arguments {args}')
 
-    global INFINITY, collect_on, output_file
+    global INFINITY, collect_on, output_file, run_metrics, end_metrics
     INFINITY = args.infinity
     collect_on = args.collect_on
     output_file = args.output
+    run_metrics = args.run_metrics
+    end_metrics = args.end_metrics
 
     period = None
     if args.collect_on == "period":
@@ -146,7 +148,7 @@ def run_cmd(args, timer=None, timeout=None):
     elif args.period is not None:
         _error('Cannot use "period" argument when collect_on is not ' '"period"')
 
-    csv_cb = prepare_metrics_files(args.run_metrics, args.end_metrics, collect_on)
+    csv_cb = prepare_metrics_files(run_metrics, end_metrics, collect_on)
 
     _, algo_module, graph_module = _load_modules(None, args.algo)
 

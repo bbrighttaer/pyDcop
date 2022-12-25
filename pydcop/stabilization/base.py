@@ -46,6 +46,9 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
             'sim_time_step_change': self.receive_sim_step_changed,
         }
 
+        # records the current position of the agent in the environment
+        self.current_position = None
+
     @property
     def neighbors(self) -> List[Neighbor]:
         nodes = list(self.children)
@@ -138,6 +141,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
                         'children': self.children,
                         'domain': self.domain,
                         'exec_order': exec_order,
+                        'current_position': self.current_position,
                     }),
                 )
 
@@ -147,9 +151,14 @@ class DynamicDcopComputationMixin:
     A mixin class to provide Dynamic computation (::class::VariableComputation) methods to classic DCOP algorithms
     """
 
+    def start_dcop(self):
+        raise NotImplementedError('Implement start_dcop in inherited class')
+
     @register('dcop_execution_message')
     def _on_dcop_execution_message(self, sender: str, recv_msg: DcopExecutionMessage, t: int):
         self.logger.info(f'DCOP execution message: {recv_msg}')
+
+        self.record_current_position(recv_msg.data['current_position'])
 
         ts = str(datetime.datetime.now().timestamp())
 
@@ -238,4 +247,10 @@ class DynamicDcopComputationMixin:
         for c in self.computation_def.node.constraints:
             if c.name == recv_msg.constraint_name and isinstance(c, DynamicEnvironmentSimulationRelation):
                 c.set_return_value(recv_msg.value)
+
+    def record_current_position(self, position):
+        if not hasattr(self, 'position_history'):
+            self.position_history = []
+        self.position_history.append(position)
+
 

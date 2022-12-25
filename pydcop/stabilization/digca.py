@@ -1,5 +1,6 @@
 import enum
 import random
+import threading
 import time
 from typing import Callable
 
@@ -29,7 +30,7 @@ Announce = message_type(
 
 AnnounceResponse = message_type(
     'announce_response',
-    fields=['agent_id', 'address'],
+    fields=['agent_id', 'address', 'num_children'],
 )
 
 AddMe = message_type(
@@ -85,10 +86,12 @@ class DIGCA(DynamicGraphConstructionComputation):
         super(DIGCA, self).__init__(NAME, agent, discovery)
 
         self.state = State.INACTIVE
-        self.announce_response_list = []
         self.connect_interval: Seconds = 4
-        self.announce_response_listening_time: Seconds = 1
         self._affected = False
+
+        self._max_degree = 3
+
+        self._connect_evt = threading.Event()
 
         self.keep_alive_agents = []
         self.keep_alive_check_interval: Seconds = 7
@@ -148,42 +151,29 @@ class DIGCA(DynamicGraphConstructionComputation):
                 on_error='fail',
             )
 
-            # wait for AnnounceResponses from available agents
-            time.sleep(self.announce_response_listening_time)
+    def _send_add_me_msg(self, sel_agent):
+        """
+        select an agent from the list of respondents (if any)
+        """
+        self.logger.debug(f'Selected agent = {sel_agent}')
 
-            # select an agent from the list of respondents (if any)
-            # self.logger.debug(f'Selecting from announce response list: {self.announce_response_list}')
-            if self.announce_response_list:
-                sel_agent = self._var_theta()
-                self.logger.debug(f'Selected agent = {sel_agent}')
+        # send add-me msg
+        dest_comp = f'{NAME}-{sel_agent.agent_id}'
+        with transient_communication(self.discovery, dest_comp, sel_agent.agent_id, sel_agent.address):
+            self.post_msg(
+                target=dest_comp,
+                msg=AddMe(
+                    agent_id=self.agent.name,
+                    address=self.address,
+                    comps=[c.name for c in self.agent.computations()]
+                ),
+            )
 
-                # send add-me msg
-                dest_comp = f'{NAME}-{sel_agent.agent_id}'
-                with transient_communication(self.discovery, dest_comp, sel_agent.agent_id, sel_agent.address):
-                    self.post_msg(
-                        target=dest_comp,
-                        msg=AddMe(
-                            agent_id=self.agent.name,
-                            address=self.address,
-                            comps=[c.name for c in self.agent.computations()]
-                        ),
-                    )
-
-                # update state
-                self.state = State.ACTIVE
-
-            # clear announce response list
-            self.announce_response_list.clear()
-
-            # callback function
-            if not self._affected and cb:
-                cb('connect-call')
-
-    def _var_theta(self):
-        return random.choice(self.announce_response_list)
+        # update state
+        self.state = State.ACTIVE
 
     def _receive_announce(self, sender: str, msg: Announce):
-        if self.state == State.INACTIVE and self._phi(msg.agent_id):  # and len(self.neighbors) < 3:
+        if self.state == State.INACTIVE and self._phi(msg.agent_id) and len(self.neighbors) < self._max_degree:
             self.logger.debug(f'Sending announce response to {msg.agent_id}')
 
             # send add-me msg
@@ -191,12 +181,34 @@ class DIGCA(DynamicGraphConstructionComputation):
             with transient_communication(self.discovery, dest_comp, msg.agent_id, msg.address):
                 self.post_msg(
                     target=dest_comp,
-                    msg=AnnounceResponse(agent_id=self.agent.name, address=self.address),
+                    msg=AnnounceResponse(
+                        agent_id=self.agent.name,
+                        address=self.address,
+                        num_children=len(self.children),
+                    ),
                 )
 
     def _receive_announce_response(self, sender: str, msg: AnnounceResponse):
-        if self.state == State.INACTIVE:
-            self.announce_response_list.append(msg)
+        self.logger.debug(f'Received announce response from {sender}: {msg}')
+        if self.state == State.INACTIVE and self._assess_potential_neighbor(msg):
+            self._send_add_me_msg(msg)
+
+    def _assess_potential_neighbor(self, msg: AnnounceResponse):
+        """
+        Checks if an agent meets the local requirements for connection
+
+        Parameters
+        ----------
+        msg: AnnounceResponse from agent
+
+        Returns
+        -------
+        True if agent satisfies requirement else False
+        """
+        if msg.num_children < self._max_degree:
+            return True
+        else:
+            return False
 
     def _receive_add_me(self, sender: str, msg: AddMe):
         if self.state == State.INACTIVE:
@@ -287,6 +299,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.logger.info(f'Received simulation time step changed: {msg}')
         self.domain = msg.data['agent_domain']
         self._affected = False
+        self.current_position = msg.data['current_position']
 
         # remove agents that are out of range
         self._inspect_connections(msg.data['agents_in_comm_range'])

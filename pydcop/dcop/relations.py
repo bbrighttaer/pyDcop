@@ -1779,14 +1779,11 @@ class DynamicEnvironmentSimulationRelation(AbstractBaseRelation, SimpleRepr):
 
     def __init__(self, name: str, computation: MessagePassingComputation, variables: List[VariableDomain]):
         super().__init__(name)
-        self._evt = threading.Event()
         self._return_value = None
         self._comp = computation
         self._variables = variables
 
     def get_value_for_assignment(self, assignment):
-        self._evt.clear()
-
         # push message to sim environment
         self._comp.post_msg(
             target='_sim_env_orchestrator',

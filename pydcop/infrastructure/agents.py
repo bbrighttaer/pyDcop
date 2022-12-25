@@ -735,9 +735,21 @@ class Agent(object):
                              if k in own_computations},
             # 'last_msg_time': self._messaging.last_msg_time,
             'activity_ratio': activity_ratio,
-            'cycles': {c.name: c.cycle_count for c in self.computations()}
+            'cycles': {c.name: c.cycle_count for c in self.computations()},
         }
+
+        # if any computation has a position history attribute (for dynamic DCOP case, add it to agent metrics)
+        p = self._get_position_history()
+        if p:
+            m['position_history'] = p
+
         return m
+
+    def _get_position_history(self):
+        for comp in self.computations():
+            if hasattr(comp, 'position_history'):
+                return comp.position_history
+        return None
 
     def messages_count(self, computation: str):
         return self._messaging.count_ext_msg[computation]

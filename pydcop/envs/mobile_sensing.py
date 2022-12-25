@@ -8,9 +8,6 @@ import numpy as np
 from pydcop.envs import SimulationEnvironment
 from pydcop.infrastructure.message_types import ConstraintEvaluationRequest
 
-seed = 7
-random.seed(seed)
-
 
 class GridCell:
     """
@@ -120,7 +117,7 @@ class GridWorld(SimulationEnvironment):
     name = 'GridWorld'
 
     def __init__(self, size, num_targets, scenario=None):
-        super(GridWorld, self).__init__(self.name, time_step_delay=5, scenario=scenario)
+        super(GridWorld, self).__init__(self.name, time_step_delay=10, scenario=scenario)
         self.grid_size = size
         self.grid = {}
         self._current_time_step = -1
@@ -182,7 +179,7 @@ class GridWorld(SimulationEnvironment):
                         self.remove_agent(a.args['agent'])
 
             # wait for a while before signaling agents
-            time.sleep(.1)
+            # time.sleep(.1)
             self.next_time_step()
         except StopIteration:
             self.on_simulation_ended()
@@ -329,7 +326,7 @@ class GridWorld(SimulationEnvironment):
         score = 0.
         for agt in self.agents:
             score += self.calc_agent_score(self.agents[agt])
-        self._disable_detected_targets()
+        # self._disable_detected_targets()
         return 0, score
 
     def calc_agent_score(self, agent: MobileSensingAgent):
