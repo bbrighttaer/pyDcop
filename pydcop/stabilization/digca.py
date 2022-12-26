@@ -8,8 +8,9 @@ from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.communication import ComputationMessage, MSG_ALGO, MSG_MGT
 from pydcop.infrastructure.computations import MessagePassingComputation, message_type
 from pydcop.infrastructure.discovery import Discovery, BroadcastMessage
+from pydcop.infrastructure.message_types import SimTimeStepChanged
 from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_MGT, ORCHESTRATOR_DIRECTORY
-from pydcop.infrastructure.orchestrator import GraphConnectionMessage, SimTimeStepChanged
+from pydcop.infrastructure.orchestrator import GraphConnectionMessage
 from pydcop.stabilization import Neighbor, Seconds, transient_communication
 from pydcop.stabilization.base import DynamicGraphConstructionComputation
 
@@ -261,11 +262,11 @@ class DIGCA(DynamicGraphConstructionComputation):
             self._affected = True
 
             # construct and send parent-assigned msg
-            self.post_msg(
-                target=f'{NAME}-{msg.agent_id}',
-                msg=ParentAssigned(agent_id=self.agent.name, address=self.address),
-                on_error='fail',
-            )
+            # self.post_msg(
+            #     target=f'{NAME}-{msg.agent_id}',
+            #     msg=ParentAssigned(agent_id=self.agent.name, address=self.address),
+            #     on_error='fail',
+            # )
 
             # execute computation if order is bottom-up/async
             self.execute_computations('bottom-up')
@@ -296,20 +297,16 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.execute_computations('top-down')
 
     def receive_sim_step_changed(self, sender: str, msg: SimTimeStepChanged):
-        self.logger.info(f'Received simulation time step changed: {msg}')
-        self.domain = msg.data['agent_domain']
-        self._affected = False
-        self.current_position = msg.data['current_position']
+        super(DIGCA, self).receive_sim_step_changed(sender, msg)
 
-        # remove agents that are out of range
-        self._inspect_connections(msg.data['agents_in_comm_range'])
+        num_neighbors = msg.data['agents_in_comm_range']
 
-        # broadcast connection request
-        self.connect()
+        if len(num_neighbors) > 0:
+            # remove agents that are out of range
+            self._inspect_connections(num_neighbors)
 
-        # cater for single agent case
-        if len(self.neighbors) == 0:
-            self.execute_computations(exec_order='single-agent')
+            # broadcast connection request
+            self.connect()
 
     def _phi(self, agt_id) -> bool:
         """

@@ -8,12 +8,13 @@ from pydcop.computations_graph.dynamic_graph import DynamicComputationNode
 from pydcop.computations_graph.ordered_graph import ConstraintLink
 from pydcop.computations_graph.pseudotree import PseudoTreeLink
 from pydcop.dcop.objects import Variable, VariableDomain
-from pydcop.dcop.relations import DynamicEnvironmentSimulationRelation
+from pydcop.dcop.relations import DynamicEnvironmentRelation
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.computations import MessagePassingComputation, Message, register
 from pydcop.infrastructure.discovery import Discovery
-from pydcop.infrastructure.message_types import ConstraintEvaluationResponse, AgentMovedMessage
-from pydcop.infrastructure.orchestrator import SimTimeStepChanged, DcopExecutionMessage, RunAgentMessage
+from pydcop.infrastructure.message_types import ConstraintEvaluationResponse, AgentMovedMessage, SimTimeStepChanged, \
+    DcopExecutionMessage, DcopConfigurationMessage, DcopInitializationMessage
+from pydcop.infrastructure.orchestrator import RunAgentMessage
 from pydcop.stabilization import Neighbor
 
 
@@ -24,7 +25,6 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
 
     def __init__(self, algo_name: str, agent: DynamicAgent, discovery: Discovery):
         super(DynamicGraphConstructionComputation, self).__init__(name=f'{algo_name}-{agent.name}')
-
         self.logger = logging.getLogger(f'pydcop.computation.{self.name}')
 
         self.discovery = discovery
@@ -34,6 +34,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         self.parent: Union[Neighbor, None] = None
         self.children: List[Neighbor] = []
         self.domain = []
+        self.neighbor_domains = {}
 
         # tracks the last time a neighbor sent a message
         self.last_contact_time = {}
@@ -60,21 +61,6 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
     def neighbor_ids(self) -> List[str]:
         return [n.agent_id for n in self.neighbors]
 
-    def receive_sim_step_changed(self, sender: str, msg: SimTimeStepChanged):
-        """
-        Handles simulation time step changed events.
-
-        Parameters
-        ----------
-        sender
-        msg
-
-        Returns
-        -------
-
-        """
-        pass
-
     def find_neighbor_by_agent_id(self, agent_id) -> Union[Neighbor, None]:
         for n in self.neighbors:
             if n.agent_id == agent_id:
@@ -98,6 +84,8 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
             )
         self.logger.debug(f'registered neighbor {neighbor.agent_id}, comps={neighbor.computations}')
 
+        self.configure_dcop_computation()
+
         if callback:
             callback(neighbor)
 
@@ -120,10 +108,34 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
             if callback:
                 callback(neighbor=neighbor, neighbor_type=neighbor_type)
 
-    def execute_computations(self, exec_order: str = None):
-        self.logger.info(f'Executing agent DCOP computations: {exec_order}')
+    def receive_sim_step_changed(self, sender: str, msg: SimTimeStepChanged):
+        """
+        Handles simulation time step changed events.
 
-        # send DCOP execution message
+        Parameters
+        ----------
+        sender
+        msg
+
+        Returns
+        -------
+
+        """
+        self.logger.info(f'Received simulation time step changed: {msg}')
+        self.domain = msg.data['agent_domain']
+        self.current_position = msg.data['current_position']
+        self.neighbor_domains = msg.data['neighbor_domains']
+
+        # initialize dcop algorithm
+        self.initialize_computations()
+
+        # cater for single agent case (when there are no agents in range for connection)
+        if len(msg.data['agents_in_comm_range']) == 0:
+            self.configure_dcop_computation()
+            self.execute_computations(exec_order='single-agent')
+
+    def initialize_computations(self):
+        # send DCOP initialization message
         for computation in self.agent.computations():
             if hasattr(computation, 'computation_def') and computation.computation_def is not None:
                 # send management command to run the computation
@@ -136,13 +148,37 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
                 # send message to running computation
                 self.post_msg(
                     target=computation.name,
-                    msg=DcopExecutionMessage(data={
+                    msg=DcopInitializationMessage(),
+                )
+
+    def configure_dcop_computation(self):
+        self.logger.info('Configuring DCOP computations')
+
+        # send DCOP execution message
+        for computation in self.agent.computations():
+            if hasattr(computation, 'computation_def') and computation.computation_def is not None:
+                # send message to running computation
+                self.post_msg(
+                    target=computation.name,
+                    msg=DcopConfigurationMessage(data={
                         'parent': self.parent,
                         'children': self.children,
                         'domain': self.domain,
-                        'exec_order': exec_order,
                         'current_position': self.current_position,
+                        'neighbor_domains': self.neighbor_domains,
                     }),
+                )
+
+    def execute_computations(self, exec_order: str = None):
+        self.logger.info(f'Executing agent DCOP computations: {exec_order}')
+
+        # send DCOP execution message
+        for computation in self.agent.computations():
+            if hasattr(computation, 'computation_def') and computation.computation_def is not None:
+                # send message to running computation
+                self.post_msg(
+                    target=computation.name,
+                    msg=DcopExecutionMessage(),
                 )
 
 
@@ -151,26 +187,35 @@ class DynamicDcopComputationMixin:
     A mixin class to provide Dynamic computation (::class::VariableComputation) methods to classic DCOP algorithms
     """
 
+    def initialize(self):
+        raise NotImplementedError('Implement initialization method in inherited class')
+
     def start_dcop(self):
         raise NotImplementedError('Implement start_dcop in inherited class')
 
-    @register('dcop_execution_message')
-    def _on_dcop_execution_message(self, sender: str, recv_msg: DcopExecutionMessage, t: int):
-        self.logger.info(f'DCOP execution message: {recv_msg}')
+    @register('dcop_initialization_message')
+    def _on_dcop_initialization_message(self, sender: str, recv_msg: DcopInitializationMessage, t: int):
+        self.initialize()
+
+    @register('dcop_configuration_message')
+    def _on_dcop_configuration_message(self, sender: str, recv_msg: DcopConfigurationMessage, t: int):
+        # todo: refactor this method, it should not recreate all existing/unchanged connections
+        self.logger.debug(f'DCOP configuration message: {recv_msg}')
 
         # when starting, record the starting position of the agent.
         # subsequent position information are carried by AgentMovedMessage
         if not hasattr(self, 'position_history'):
             self.record_current_position(recv_msg.data['current_position'])
 
-        ts = str(datetime.datetime.now().timestamp())
+        neighbor_domains = recv_msg.data['neighbor_domains']
 
         # get msg components
         parent: Neighbor = recv_msg.data['parent']
         children: List[Neighbor] = recv_msg.data['children']
 
         # DCOP components
-        self.variable.domain.values = recv_msg.data['domain']
+        variable = Variable(self.name, VariableDomain(self.name, self.name, recv_msg.data['domain']))
+        self.variable = variable
 
         # update DCOP properties
         constraints = []
@@ -186,10 +231,12 @@ class DynamicDcopComputationMixin:
                 for j, comp_name in enumerate(n.computations):
                     if 'var' in comp_name:
                         variables = [
-                            Variable(self.name, VariableDomain(self.name, self.name, recv_msg.data['domain'])),
-                            Variable(comp_name, VariableDomain(comp_name, comp_name, []))
+                            variable,
+                            Variable(comp_name, VariableDomain(
+                                comp_name, comp_name, neighbor_domains[comp_name.replace('a', 'var')]
+                            ))
                         ]
-                        constraint = DynamicEnvironmentSimulationRelation(f'c-{self.name}-{i}{j}-{ts}', self, variables)
+                        constraint = DynamicEnvironmentRelation(f'c-{self.name}-{i}{j}', self, variables)
                         constraints.append(constraint)
                         links.append(
                             ConstraintLink(
@@ -203,10 +250,12 @@ class DynamicDcopComputationMixin:
                 for j, comp_name in enumerate(n.computations):
                     if 'var' in comp_name:
                         variables = [
-                            Variable(self.name, VariableDomain(self.name, self.name, recv_msg.data['domain'])),
-                            Variable(comp_name, VariableDomain(comp_name, comp_name, []))
+                            variable,
+                            Variable(comp_name, VariableDomain(
+                                comp_name, comp_name, neighbor_domains[comp_name.replace('var', 'a')]
+                            ))
                         ]
-                        constraint = DynamicEnvironmentSimulationRelation(f'c-{self.name}-{i}{j}-{ts}', self, variables)
+                        constraint = DynamicEnvironmentRelation(f'c-{self.name}-{i}{j}', self, variables)
                         constraints.append(constraint)
                         links.append(
                             PseudoTreeLink(
@@ -219,10 +268,12 @@ class DynamicDcopComputationMixin:
                 for i, comp_name in enumerate(parent.computations):
                     if 'var' in comp_name:
                         variables = [
-                            Variable(self.name, VariableDomain(self.name, self.name, recv_msg.data['domain'])),
-                            Variable(comp_name, VariableDomain(comp_name, comp_name, []))
+                            variable,
+                            Variable(comp_name, VariableDomain(
+                                comp_name, comp_name, neighbor_domains[comp_name.replace('var', 'a')]
+                            ))
                         ]
-                        constraint = DynamicEnvironmentSimulationRelation(f'c-{self.name}-p{i}-{ts}', self, variables)
+                        constraint = DynamicEnvironmentRelation(f'c-{self.name}-p{i}', self, variables)
                         constraints.append(constraint)
                         links.append(
                             PseudoTreeLink(
@@ -233,10 +284,14 @@ class DynamicDcopComputationMixin:
                         )
 
         # set node properties for dcop computation
-        dynamic_node.constraints = constraints
+        dynamic_node.constraints = constraints or [DynamicEnvironmentRelation(f'c-{self.name}', self, [variable])]
         dynamic_node.links = links
         dynamic_node.neighbors = list(set(n for l in links for n in l.nodes if n != dynamic_node.name))
         self.logger.debug(f'constraints = {constraints}, links = {links}, neighbors = {dynamic_node.neighbors}')
+
+    @register('dcop_execution_message')
+    def _on_dcop_execution_message(self, sender: str, recv_msg: DcopExecutionMessage, t: int):
+        self.logger.info(f'DCOP execution message: {recv_msg}')
 
         # trigger DCOP computation
         self.start_dcop()
@@ -247,7 +302,7 @@ class DynamicDcopComputationMixin:
 
         # set return value on the constraint that made the request
         for c in self.computation_def.node.constraints:
-            if c.name == recv_msg.constraint_name and isinstance(c, DynamicEnvironmentSimulationRelation):
+            if c.name == recv_msg.constraint_name and isinstance(c, DynamicEnvironmentRelation):
                 c.set_return_value(recv_msg.value)
 
     @register('agent_moved')

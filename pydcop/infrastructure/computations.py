@@ -1012,6 +1012,10 @@ class VariableComputation(DcopComputation):
         """
         return self._variable
 
+    @variable.setter
+    def variable(self, v):
+        self._variable = v
+
     @property
     def current_value(self):
         """

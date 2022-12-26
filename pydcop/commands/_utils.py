@@ -123,6 +123,7 @@ columns = {
         "status",
     ],
     "value_change": [
+        "timestep",
         "time",
         "cycle",
         "cost",

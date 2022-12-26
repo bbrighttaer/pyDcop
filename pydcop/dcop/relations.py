@@ -31,19 +31,17 @@
 
 import functools
 import random
-import threading
 from copy import deepcopy
-
-import numpy as np
 from typing import Dict, Iterable, Any, Tuple, Callable, List, Union
 
-from pydcop.dcop.objects import Variable, VariableDomain
+import numpy as np
+
+from pydcop.dcop.objects import Variable
 from pydcop.infrastructure.computations import MessagePassingComputation
 from pydcop.infrastructure.message_types import ConstraintEvaluationRequest
+from pydcop.utils.expressionfunction import ExpressionFunction
 from pydcop.utils.simple_repr import SimpleRepr
 from pydcop.utils.various import func_args
-from pydcop.utils.expressionfunction import ExpressionFunction
-
 
 DEFAULT_TYPE = np.int32
 
@@ -1772,12 +1770,12 @@ def projection(a_rel: Constraint, a_var: Variable, mode="max") -> Constraint:
     return proj_rel
 
 
-class DynamicEnvironmentSimulationRelation(AbstractBaseRelation, SimpleRepr):
+class DynamicEnvironmentRelation(AbstractBaseRelation, SimpleRepr):
     """
     A relation that connects to a simulation environment to compute cost.
     """
 
-    def __init__(self, name: str, computation: MessagePassingComputation, variables: List[VariableDomain]):
+    def __init__(self, name: str, computation: MessagePassingComputation, variables: List[Variable]):
         super().__init__(name)
         self._return_value = None
         self._comp = computation

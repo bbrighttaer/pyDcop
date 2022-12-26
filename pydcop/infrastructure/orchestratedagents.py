@@ -42,7 +42,7 @@ from pydcop.infrastructure.computations import (
     build_computation,
 )
 from pydcop.infrastructure.discovery import Address
-from pydcop.infrastructure.message_types import AgentMovedMessage
+from pydcop.infrastructure.message_types import AgentMovedMessage, SimTimeStepChanged
 from pydcop.infrastructure.orchestrator import (
     DeployMessage,
     RunAgentMessage,
@@ -61,7 +61,7 @@ from pydcop.infrastructure.orchestrator import (
     RepairDoneMessage,
     ResumeMessage,
     AgentRemovedMessage,
-    SetMetricsModeMessage, RunStabilizationMessage, SimTimeStepChanged,
+    SetMetricsModeMessage, RunStabilizationMessage,
 )
 
 ORCHESTRATOR = "orchestrator"

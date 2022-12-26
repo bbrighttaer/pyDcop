@@ -225,6 +225,10 @@ class GridWorld(SimulationEnvironment):
             'score': self.calc_agent_score(self.agents[agent_id]),  # score in the just ended time step
             'agents_in_comm_range': [] if sensor is None else self.get_agents_in_communication_range(agent_id),
             'agent_domain': self._get_legit_actions(self.agents[agent_id].current_cell),
+            'neighbor_domains': {
+                agt: self._get_legit_actions(self.agents[agt].current_cell)
+                for agt in self.get_agents_in_communication_range(agent_id)
+            },
         }
 
     def get_agents_in_communication_range(self, agent_id) -> list:

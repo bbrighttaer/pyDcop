@@ -391,7 +391,6 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
                 self.post_msg(self._parent, msg)
 
     def _compute_utils_msg(self):
-
         res = []
 
         for r in self._constraints:

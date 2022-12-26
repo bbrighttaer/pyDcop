@@ -58,7 +58,7 @@ from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT, InP
 from pydcop.infrastructure.computations import Message, message_type, \
     MessagePassingComputation
 from pydcop.infrastructure.discovery import Directory, UnknownAgent, BroadcastMessage
-from pydcop.infrastructure.message_types import ConstraintEvaluationResponse, AgentMovedMessage
+from pydcop.infrastructure.message_types import ConstraintEvaluationResponse, AgentMovedMessage, SimTimeStepChanged
 from pydcop.reparation.removal import _removal_candidate_agents, \
     _removal_orphaned_computations, _removal_candidate_agt_info
 
@@ -536,6 +536,7 @@ class DynamicOrchestrator(Orchestrator):
         self.logger.info(f'Final graph: {self._current_graph.edges.data()}')
 
     def on_sim_env_time_step_changed(self):
+        self.mgt._current_cycle += 1
         for agent in self.directory.agents_data:
             if agent in self.simulation_environment.agents and agent != ORCHESTRATOR:
                 self.mgt._send_mgt_msg(
@@ -660,16 +661,6 @@ GraphConnectionMessage = message_type(
 # that the agent runs its stabilization algorithm
 RunStabilizationMessage = message_type(
     'run_stabilization', []
-)
-
-# SimTimeStepChange is sent by the orchestrator to all agents when the simulation environment changes its times step
-SimTimeStepChanged = message_type(
-    'sim_time_step_change', ['data'],
-)
-
-# Sent from a stabilization computation to DCOP computation(s)
-DcopExecutionMessage = message_type(
-    'dcop_execution_message', ['data'],
 )
 
 
@@ -1499,6 +1490,7 @@ class AgentsMgt(MessagePassingComputation):
         total_time = t - self.start_time if self.start_time is not None else 0
 
         global_metrics = {
+            'timestep': self._current_cycle,
             'status': current_status,
             'assignment': assignment,
             'cost': cost,
