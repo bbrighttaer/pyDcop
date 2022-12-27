@@ -1,6 +1,7 @@
 import datetime
 import logging
 import time
+from collections import defaultdict
 from typing import List, Callable, Union
 
 from pydcop.computations_graph import constraints_hypergraph, pseudotree
@@ -187,6 +188,10 @@ class DynamicDcopComputationMixin:
     A mixin class to provide Dynamic computation (::class::VariableComputation) methods to classic DCOP algorithms
     """
 
+    def __init__(self):
+        self.position_history = []
+        self.async_func_return_val = {}
+
     def initialize(self):
         raise NotImplementedError('Implement initialization method in inherited class')
 
@@ -299,19 +304,13 @@ class DynamicDcopComputationMixin:
     @register('constraint_evaluation_response')
     def _on_constraint_evaluation_response(self, sender: str, recv_msg: ConstraintEvaluationResponse, t: int):
         self.logger.debug(f'Received constraint evaluation response: {recv_msg} from {sender}')
-
-        # set return value on the constraint that made the request
-        for c in self.computation_def.node.constraints:
-            if c.name == recv_msg.constraint_name and isinstance(c, DynamicEnvironmentRelation):
-                c.set_return_value(recv_msg.value)
+        self.async_func_return_val[recv_msg.constraint_name] = recv_msg.value
 
     @register('agent_moved')
     def _on_agent_moved_msg(self, sender: str, recv_msg: AgentMovedMessage, t: int):
         self.record_current_position(recv_msg.position)
 
     def record_current_position(self, position):
-        if not hasattr(self, 'position_history'):
-            self.position_history = []
         self.position_history.append(position)
 
 

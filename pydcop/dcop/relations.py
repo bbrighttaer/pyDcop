@@ -1777,7 +1777,6 @@ class DynamicEnvironmentRelation(AbstractBaseRelation, SimpleRepr):
 
     def __init__(self, name: str, computation: MessagePassingComputation, variables: List[Variable]):
         super().__init__(name)
-        self._return_value = None
         self._comp = computation
         self._variables = variables
 
@@ -1789,11 +1788,10 @@ class DynamicEnvironmentRelation(AbstractBaseRelation, SimpleRepr):
         )
 
         # wait for data from sim environment
-        while self._return_value is None:
+        while self.name not in self._comp.async_func_return_val:
             continue
 
-        v = self._return_value
-        self._return_value = None
+        v = self._comp.async_func_return_val.pop(self.name)
         return v
 
     def set_return_value(self, value):
