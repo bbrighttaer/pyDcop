@@ -9,7 +9,7 @@ from pydcop.computations_graph.dynamic_graph import DynamicComputationNode
 from pydcop.computations_graph.ordered_graph import ConstraintLink
 from pydcop.computations_graph.pseudotree import PseudoTreeLink
 from pydcop.dcop.objects import Variable, VariableDomain
-from pydcop.dcop.relations import DynamicEnvironmentRelation
+from pydcop.dcop.relations import AsyncNaryFunctionRelation, AsyncNAryMatrixRelation
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.computations import MessagePassingComputation, Message, register
 from pydcop.infrastructure.discovery import Discovery
@@ -227,6 +227,12 @@ class DynamicDcopComputationMixin:
         links = []
         dynamic_node: DynamicComputationNode = self.computation_def.node
 
+        # select relation/constraint class based on DCOP algorithm use
+        relation_class = {
+            'cocoa': AsyncNaryFunctionRelation,
+            'ddpop': AsyncNAryMatrixRelation,
+        }.get(self.computation_def.algo.algo)
+
         if dynamic_node.type == constraints_hypergraph.GRAPH_NODE_TYPE:
             neighbors = [parent] if parent else []
             neighbors += children
@@ -241,7 +247,7 @@ class DynamicDcopComputationMixin:
                                 comp_name, comp_name, neighbor_domains[comp_name.replace('a', 'var')]
                             ))
                         ]
-                        constraint = DynamicEnvironmentRelation(f'c-{self.name}-{i}{j}', self, variables)
+                        constraint = relation_class(self, variables, name=f'c-{self.name}-{i}{j}')
                         constraints.append(constraint)
                         links.append(
                             ConstraintLink(
@@ -260,7 +266,7 @@ class DynamicDcopComputationMixin:
                                 comp_name, comp_name, neighbor_domains[comp_name.replace('var', 'a')]
                             ))
                         ]
-                        constraint = DynamicEnvironmentRelation(f'c-{self.name}-{i}{j}', self, variables)
+                        constraint = relation_class(self, variables, name=f'c-{self.name}-{i}{j}')
                         constraints.append(constraint)
                         links.append(
                             PseudoTreeLink(
@@ -278,7 +284,7 @@ class DynamicDcopComputationMixin:
                                 comp_name, comp_name, neighbor_domains[comp_name.replace('var', 'a')]
                             ))
                         ]
-                        constraint = DynamicEnvironmentRelation(f'c-{self.name}-p{i}', self, variables)
+                        constraint = relation_class(self, variables, name=f'c-{self.name}-p{i}')
                         constraints.append(constraint)
                         links.append(
                             PseudoTreeLink(
@@ -289,7 +295,7 @@ class DynamicDcopComputationMixin:
                         )
 
         # set node properties for dcop computation
-        dynamic_node.constraints = constraints or [DynamicEnvironmentRelation(f'c-{self.name}', self, [variable])]
+        dynamic_node.constraints = constraints or [relation_class(self, [variable], name=f'c-{self.name}')]
         dynamic_node.links = links
         dynamic_node.neighbors = list(set(n for l in links for n in l.nodes if n != dynamic_node.name))
         self.logger.debug(f'constraints = {constraints}, links = {links}, neighbors = {dynamic_node.neighbors}')

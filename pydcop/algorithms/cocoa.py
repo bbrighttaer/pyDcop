@@ -5,9 +5,7 @@ import random
 import numpy as np
 
 from pydcop.algorithms import ComputationDef, AlgoParameterDef
-from pydcop.dcop.relations import Constraint, DynamicEnvironmentRelation
 from pydcop.infrastructure.computations import VariableComputation, Message, register
-from pydcop.infrastructure.message_types import ConstraintEvaluationResponse, DcopExecutionMessage
 from pydcop.stabilization.base import DynamicDcopComputationMixin
 
 # GRAPH_TYPE = "constraints_hypergraph"
@@ -141,7 +139,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         super(CoCoA, self)._on_dcop_initialization_message(sender, recv_msg, t)
 
     @register("dcop_execution_message")
-    def _on_dcop_execution_message(self, sender: str, recv_msg: DcopExecutionMessage, t: int):
+    def _on_dcop_execution_message(self, sender: str, recv_msg, t: int):
         return super(CoCoA, self)._on_dcop_execution_message(sender, recv_msg, t)
 
     @register("dcop_configuration_message")
@@ -149,7 +147,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         return super(CoCoA, self)._on_dcop_configuration_message(sender, recv_msg, t)
 
     @register("constraint_evaluation_response")
-    def _on_constraint_evaluation_response(self, sender: str, recv_msg: ConstraintEvaluationResponse, t: int):
+    def _on_constraint_evaluation_response(self, sender: str, recv_msg, t: int):
         super(CoCoA, self)._on_constraint_evaluation_response(sender, recv_msg, t)
 
     @register('agent_moved')

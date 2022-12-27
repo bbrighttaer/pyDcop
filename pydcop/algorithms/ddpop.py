@@ -62,7 +62,7 @@ from pydcop.dcop.relations import (
     NAryMatrixRelation,
     find_arg_optimal,
     join,
-    projection,
+    projection, async_rel_join, async_rel_projection, AsyncNAryMatrixRelation,
 )
 from pydcop.infrastructure.computations import Message, VariableComputation, register
 from pydcop.stabilization.base import DynamicDcopComputationMixin
@@ -179,6 +179,17 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
 
         # self._initialize()
 
+    def footprint(self):
+        return computation_memory(self.computation_def.node)
+
+    @property
+    def is_root(self):
+        return self._parent is None
+
+    @property
+    def is_leaf(self):
+        return len(self._children) == 0
+
     def _initialize(self, ):
         self._parent, self._pseudo_parents, self._children, self._pseudo_children = get_dfs_relations(
             self.computation_def.node
@@ -205,12 +216,12 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
             costs = []
             for d in self._variable.domain:
                 costs.append(self._variable.cost_for_val(d))
-            self._joined_utils = NAryMatrixRelation(
-                [self._variable], costs, name="joined_utils"
+            self._joined_utils = AsyncNAryMatrixRelation(
+                self, [self._variable], costs,
             )
 
         else:
-            self._joined_utils = NAryMatrixRelation([], name="joined_utils")
+            self._joined_utils = AsyncNAryMatrixRelation(self, [])
         self._children_separator = {}
         self._waited_children = []
         if not self.is_leaf:
@@ -222,35 +233,7 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
             # before us
             self._waited_children = list(self._children)
 
-    def footprint(self):
-        return computation_memory(self.computation_def.node)
-
-    @property
-    def is_root(self):
-        return self._parent is None
-
-    @property
-    def is_leaf(self):
-        return len(self._children) == 0
-
-    @register('dcop_execution_message')
-    def _on_dcop_execution_message(self, sender: str, recv_msg, t: int):
-        super()._on_dcop_execution_message(sender, recv_msg, t)
-
-    @register('constraint_evaluation_response')
-    def _on_constraint_evaluation_response(self, sender: str, recv_msg, t: int):
-        super()._on_constraint_evaluation_response(sender, recv_msg, t)
-
-    @register('agent_moved')
-    def _on_agent_moved_msg(self, sender: str, recv_msg, t: int):
-        super()._on_agent_moved_msg(sender, recv_msg, t)
-
     def start_dcop(self):
-        self._initialize()
-        self.on_start_dcop()
-
-    def on_start_dcop(self):
-
         if self.is_leaf and not self.is_root:
             # If we are a leaf in the DFS Tree we can immediately compute
             # our util and send it to our parent.
@@ -268,7 +251,7 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
             #  can select our own value alone:
             if self._constraints:
                 for r in self._constraints:
-                    self._joined_utils = join(self._joined_utils, r)
+                    self._joined_utils = async_rel_join(self,  self._joined_utils, r)
 
                 values, current_cost = find_arg_optimal(
                     self._variable, self._joined_utils, self._mode
@@ -295,6 +278,26 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
                 )
                 value = choice(self._variable.domain)
                 self.select_value_and_finish(value, 0.0)
+
+    @register("dcop_initialization_message")
+    def _on_dcop_initialization_message(self, sender: str, recv_msg, t: int):
+        super()._on_dcop_initialization_message(sender, recv_msg, t)
+
+    @register("dcop_execution_message")
+    def _on_dcop_execution_message(self, sender: str, recv_msg, t: int):
+        return super()._on_dcop_execution_message(sender, recv_msg, t)
+
+    @register("dcop_configuration_message")
+    def _on_dcop_configuration_message(self, sender: str, recv_msg, t: int):
+        return super()._on_dcop_configuration_message(sender, recv_msg, t)
+
+    @register("constraint_evaluation_response")
+    def _on_constraint_evaluation_response(self, sender: str, recv_msg, t: int):
+        super()._on_constraint_evaluation_response(sender, recv_msg, t)
+
+    @register('agent_moved')
+    def _on_agent_moved_msg(self, sender: str, recv_msg, t: int):
+        super()._on_agent_moved_msg(sender, recv_msg, t)
 
     def stop_condition(self):
         # dpop stop condition is easy at it only selects one single value !
@@ -391,13 +394,12 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
                 self.post_msg(self._parent, msg)
 
     def _compute_utils_msg(self):
-        res = []
 
         for r in self._constraints:
-            self._joined_utils = join(self._joined_utils, r)
+            self._joined_utils = async_rel_join(self, self._joined_utils, r)
 
         # use projection to eliminate self out of the message to our parent
-        util = projection(self._joined_utils, self._variable, self._mode)
+        util = async_rel_projection(self, self._joined_utils, self._variable, self._mode)
 
         return util
 

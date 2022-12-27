@@ -27,8 +27,7 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
-
-
+import datetime
 import functools
 import random
 from copy import deepcopy
@@ -1770,12 +1769,12 @@ def projection(a_rel: Constraint, a_var: Variable, mode="max") -> Constraint:
     return proj_rel
 
 
-class DynamicEnvironmentRelation(AbstractBaseRelation, SimpleRepr):
+class AsyncNaryFunctionRelation(AbstractBaseRelation, SimpleRepr):
     """
     A relation that connects to a simulation environment to compute cost.
     """
 
-    def __init__(self, name: str, computation: MessagePassingComputation, variables: List[Variable]):
+    def __init__(self, computation: MessagePassingComputation, variables: List[Variable], name: str):
         super().__init__(name)
         self._comp = computation
         self._variables = variables
@@ -1805,3 +1804,351 @@ class DynamicEnvironmentRelation(AbstractBaseRelation, SimpleRepr):
         else:
             return self.get_value_for_assignment(kwargs)
 
+
+class AsyncNAryMatrixRelation(AbstractBaseRelation, SimpleRepr):
+    """
+    Provides an async constraint evaluation similar to AsyncNaryFunctionRelation.
+    It is used in conjunction with a simulation environment where the actual constraint is evaluated.
+
+    NAryMatrixRelation Doc
+    ----------------------
+
+    This class represent a n-ary relation other a set of variable xi.
+
+    It is a multidimensional matrix, with one dimension for each variable in
+    the separator of variable the variable sending this messsage.
+
+    Notes
+    -----
+
+    Note: when defining the relation with a matrix, the dimension of the
+    matrix must be in the same order as the variable. For a 2-ary
+    relation, the first variables maps to the column of the matrix,
+    and the second variable to the rows.
+
+    The matrix is and array of array (of array... depending on the arity
+    of the relation). The inner most arrays maps to the values of the
+    last variables (and thus have the same size than the domain of the
+    last variables).
+
+    For example :
+
+        x1 = dpop.Variable('x1', ['a', 'b', 'c'])
+        x2 = dpop.Variable('x2', ['1', '2'])
+        u1 = dpop.NAryRelation([x1, x2], [[2, 16],
+                                          [4, 32],
+                                          [8, 64]])
+
+    Parameters
+    ----------
+    variables: a list or finite iterable of variables
+        the variables this relation depends on (its
+        dimensions)
+    matrix: an optional array or np.array matrix
+        an optional array or np.array matrix those dimension
+        maps the domains of the variables of the relation. If the matrix is
+        not given, the relation returns 0.0 for all assignments of the
+        variables. Notice that we use float by default when initializing an
+        zeroed relation
+    name: str
+        an optional name for the relation.
+
+    """
+
+    def __init__(
+            self, comp: MessagePassingComputation, variables: Iterable[Variable], matrix=None, *args, **kwargs
+    ) -> None:
+        name = comp.name + '-c' + str(datetime.datetime.now().timestamp())
+        super().__init__(name)
+        self._comp = comp
+        self._variables = list(variables)
+        shape = tuple([len(v.domain) for v in variables])
+        if matrix is None:
+            # create a zero-filled matrix
+            self._m = np.zeros(shape=shape, dtype=np.float64)
+
+        else:
+            if not isinstance(matrix, np.array.__class__):
+                matrix = np.array(matrix)
+            if shape != matrix.shape:
+                raise AttributeError(
+                    "Invalid dimension when building util " "from matrix"
+                )
+            self._m = matrix
+
+    def slice(
+            self, partial_assignment: Dict[str, object], ignore_extra_vars=False
+    ) -> "AsyncNAryMatrixRelation":
+        if not partial_assignment:
+            return self
+        sliced_vars, sliced_values = zip(*partial_assignment.items())
+        slice_vars, s = self._slice_matrix(
+            sliced_vars, sliced_values, ignore_extra_vars=ignore_extra_vars
+        )
+        u = AsyncNAryMatrixRelation(self._comp, slice_vars, self._m[s])
+        return u
+
+    def _slice_matrix(self, sliced_vars, sliced_values, ignore_extra_vars=False):
+
+        s_vars = list(sliced_vars)
+        s_values = list(sliced_values)
+
+        var_names = [v.name for v in self._variables]
+        for i, v in enumerate(sliced_vars):
+            if v not in var_names:
+                if not ignore_extra_vars:
+                    raise AttributeError(
+                        "{} is not in the dimensions of util : {}".format(
+                            v, self._variables
+                        )
+                    )
+                else:
+                    del s_vars[i]
+                    del s_values[i]
+
+        slices = []
+        slice_vars = []
+        for v in self._variables:
+            if v.name in s_vars:
+                slice_index = s_vars.index(v.name)
+                val = s_values[slice_index]
+                val_index = v.domain.index(val)
+                slices.append(val_index)
+            else:
+                slices.append(slice(None))
+                slice_vars.append(v)
+
+        return slice_vars, tuple(slices)
+
+    def get_value_for_assignment(self, var_values=None):
+        """
+        Returns the value of the relation for an assignment.
+
+        :param var_values: either a list or a dict.
+        * If var_values is a list, it must be  an array of values
+        representing a full assignment of the variables of the relation,
+        in the same order as the variables in the dimension.
+        * If it is a dict, it must be a var_name => var_value mapping
+
+        :return: the value of the relation.
+        """
+
+        if var_values is None:
+            if self._m.shape == ():
+                return self._m
+            else:
+                raise KeyError(
+                    "Needs an assignment when requesting value "
+                    "in a n-ary relation, n!=0"
+                )
+        if isinstance(var_values, list):
+            assignt = {self._variables[i].name: val for i, val in enumerate(var_values)}
+            sliced_relation = self.slice(assignt)
+
+        elif isinstance(var_values, dict):
+            sliced_relation = self.slice(var_values)
+
+        else:
+            raise ValueError("Assignment must be dict or array")
+
+        # compile variables/agents to be considered in the constraint evaluation
+        sliced_var_values = {
+          v.name: var_values[v.name] for v in sliced_relation._variables
+        }
+
+        # send constraint evaluation request to sim environment
+        self._comp.post_msg(
+            target='_sim_env_orchestrator',
+            msg=ConstraintEvaluationRequest(self.name, sliced_var_values),
+        )
+
+        # wait for data from sim environment
+        while self.name not in self._comp.async_func_return_val:
+            continue
+
+        # get value and return it
+        v = self._comp.async_func_return_val.pop(self.name)
+        return v
+
+    def __call__(self, *args, **kwargs):
+        """
+        Shortcut method for get_value_for_assignment.
+        Instead of using `relation.get_value_for_assignment([val1, val2,
+        ...])` you can use the relation as a callable and directly use
+        `relation(val1, val2, ...)`
+
+        :param args: values representing a full assignment of
+        the variables of the relation, in the same order as the variables in
+        the dimension.
+        :return: the value of the relation.
+        """
+
+        if not kwargs:
+            return self.get_value_for_assignment(list(args))
+        else:
+            return self.get_value_for_assignment(kwargs)
+
+    def set_value_for_assignment(self, var_values, rel_value) -> "AsyncNAryMatrixRelation":
+        """
+        Set the value of the relation for an assignment.
+
+        WARNING: this returns a new relation with the value set for this assignment and
+        DOES NOT modify the current relation !!
+
+        :param var_values: either a list or a dict.
+        * If var_values is a list, it must be  an array of values
+        representing a full assignment of the variables of the relation,
+        in the same order as the variables in the dimension.
+        * If it is a dict, it must be a var_name => var_value mapping
+
+        :param rel_value: the value of the relation.
+        """
+        if isinstance(var_values, list):
+            _, s = self._slice_matrix([v.name for v in self._variables], var_values)
+            matrix = np.copy(self._m)
+            matrix[s] = rel_value
+            return AsyncNAryMatrixRelation(self._comp, self._variables, matrix)
+
+        elif isinstance(var_values, dict):
+            values = []
+            for v in self._variables:
+                values.append(var_values[v.name])
+            _, s = self._slice_matrix([v.name for v in self._variables], values)
+            matrix = np.copy(self._m)
+            matrix.itemset(s, rel_value)
+            return AsyncNAryMatrixRelation(self._comp, self._variables, matrix)
+        raise ValueError("Could not set value, must be list or dict")
+
+    @staticmethod
+    def from_func_relation(rel: RelationProtocol, comp: MessagePassingComputation) -> "AsyncNAryMatrixRelation":
+        variables = rel.dimensions
+        cost_matrix = AsyncNAryMatrixRelation(comp, variables)
+        # We also compute the min and max value of the constraint as it is to
+        # be needed in gdba
+        mini = None
+        maxi = None
+
+        for asgt in generate_assignment_as_dict(variables):
+            value = rel(asgt)
+            cost_matrix = cost_matrix.set_value_for_assignment(asgt, value)
+
+        return cost_matrix
+
+    def __str__(self):
+        if self._name:
+            return f"AsyncNaryMatrixRelation({self._name}, {[v.name for v in self._variables]}, {self._m})"
+        else:
+            return f"AsyncNaryMatrixRelation({[v.name for v in self._variables]}, {self._m})"
+
+    def __repr__(self):
+        return f"AsyncNaryMatrixRelation({self.name}, {[v.name for v in self._variables]}, {self._m})"
+
+    def __eq__(self, other):
+        if type(other) != AsyncNAryMatrixRelation:
+            return False
+        if (
+                self.name == other.name
+                and self.dimensions == other.dimensions
+                and np.all(self._m == other._m)
+        ):
+            return True
+        return False
+
+    def __hash__(self):
+        # Hack : hashing str(self._m) is not perfect, as it does not take
+        # into account the full numpy.ndarray, but it should be enough and
+        # is much faster. hash collision are not dramatic in our case.
+        return hash((self.name, tuple(self._variables), str(self._m)))
+
+    def _simple_repr(self):
+        self._matrix = self._m.tolist()
+        r = super()._simple_repr()
+        self._matrix = None
+        return r
+
+
+def async_rel_join(comp: MessagePassingComputation, u1: Constraint, u2: Constraint) -> Constraint:
+    """
+    Build a new Constraint by joining the two Constraint u1 and u2.
+
+    The dimension of the new Constraint is the union of the dimensions of u1
+    and u2. For any complete assignment, the value of this new relation is the sum of
+    the values from u1 and u2 for the subset of this assignment that apply to
+    their respective dimension.
+
+    For more details, see the definition of the join operator in Petcu's Phd thesis.
+
+    Dimension order is important for some operations, variables for u1 are
+    listed first, followed by variables from u2 that where already used by u1
+    (in the order in which they appear in u2.dimension).
+    Note that relying on dimension order is fragile and discouraged,
+    use keyword arguments whenever possible instead !
+
+    Parameters
+    ----------
+    u1: Constraint
+        n-ary relation
+    u2: Constraint
+        n-ary relation
+
+    Returns
+    -------
+    Constraint:
+        a new Constraint
+    """
+    dims = u1.dimensions[:]
+    for d2 in u2.dimensions:
+        if d2 not in dims:
+            dims.append(d2)
+
+    u_j = AsyncNAryMatrixRelation(comp, dims)
+    for ass in generate_assignment_as_dict(dims):
+
+        u1_ass = filter_assignment_dict(ass, u1.dimensions)
+        u2_ass = filter_assignment_dict(ass, u2.dimensions)
+        s = u1(**u1_ass) + u2(**u2_ass)
+        u_j = u_j.set_value_for_assignment(ass, s)
+
+    return u_j
+
+
+def async_rel_projection(comp: MessagePassingComputation, a_rel: Constraint, a_var: Variable, mode="max") -> Constraint:
+    """
+    The projection of a relation `a_rel` along the variable `a_var` is the
+    optimization of the matrix along the axis of this variable.
+
+    The result of `projection(a_rel, a_var)` is also a relation, with one less
+    dimension than a_rel (the a_var dimension).
+    For each possible instantiation of the variable other than a_var,
+    the optimal instantiation for a_var is chosen and the corresponding
+    utility recorded in projection(a_rel, a_var)
+
+    Also see definition in Petcu 2007.
+
+    Parameters
+    ----------
+    a_rel: Constraint
+        the projected relation
+    a_var: Variable
+        the variable over which to project
+    mode: mode as str
+        'max (default) for maximization, 'min' for minimization.
+
+    Returns
+    -------
+    Constraint:
+        the new relation resulting from the projection
+    """
+
+    remaining_vars = a_rel.dimensions.copy()
+    remaining_vars.remove(a_var)
+
+    # the new relation resulting from the projection
+    proj_rel = AsyncNAryMatrixRelation(comp, remaining_vars)
+
+    for partial in generate_assignment_as_dict(remaining_vars):
+
+        _, rel_val = find_arg_optimal(a_var, a_rel.slice(partial), mode)
+        proj_rel = proj_rel.set_value_for_assignment(partial, rel_val)
+
+    return proj_rel
