@@ -537,6 +537,7 @@ class DynamicOrchestrator(Orchestrator):
 
     def on_sim_env_time_step_changed(self):
         self.mgt._current_cycle += 1
+        self.mgt.copy_current_graph()
         for agent in self.directory.agents_data:
             if agent in self.simulation_environment.agents and agent != ORCHESTRATOR:
                 self.mgt._send_mgt_msg(
@@ -1536,10 +1537,7 @@ class DynamicAgentsMgt(AgentsMgt):
         """
         self.logger.debug('Scenario event from : %s', msg)
 
-        self._orchestrator._copied_graph = copy.deepcopy(self._orchestrator._current_graph)
-        self.logger.debug(f'Copied graph: {self._orchestrator._copied_graph.number_of_nodes()}, '
-                          f'{self._orchestrator._copied_graph.number_of_edges()}')
-        self.logger.info(self._orchestrator._copied_graph.edges.data())
+        self.copy_current_graph()
 
         evt = msg.content
         leaving_agents = []
@@ -1562,6 +1560,12 @@ class DynamicAgentsMgt(AgentsMgt):
             else:
                 self.logger.error('Unknown event action %s ', a)
                 raise ValueError(f'Unknown event action ' + str(a))
+
+    def copy_current_graph(self):
+        self._orchestrator._copied_graph = copy.deepcopy(self._orchestrator._current_graph)
+        self.logger.debug(f'Copied graph = {self._orchestrator._copied_graph.edges.data()}, '
+                          f'num nodes = {self._orchestrator._copied_graph.number_of_nodes()}, '
+                          f'num edges = {self._orchestrator._copied_graph.number_of_edges()}')
 
     def remove_agent(self, agt):
         self._send_mgt_msg(agt, AgentRemovedMessage())
