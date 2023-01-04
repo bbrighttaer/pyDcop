@@ -1,8 +1,6 @@
-import datetime
 import logging
-import threading
+import logging
 import time
-from collections import defaultdict
 from typing import List, Callable, Union
 
 from pydcop.computations_graph import constraints_hypergraph, pseudotree
@@ -203,7 +201,17 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         raise NotImplementedError('Connection function has not been implemented yet')
 
     def inspect_connections(self, agents_in_comm_range):
-        raise NotImplementedError('Connection inspection function has not been implemented yet')
+        """
+        Removes out-of-range neighbors.
+        """
+        self.logger.debug(f'Inspecting connections: {agents_in_comm_range}')
+        for neighbor in self.neighbors:
+            if neighbor.agent_id not in agents_in_comm_range:
+                self.logger.debug(f'Agent {neighbor.agent_id}')
+                self.unregister_neighbor(neighbor, callback=self.on_neighbor_removed)
+
+    def on_neighbor_removed(self, neighbor: Neighbor, *args, **kwargs):
+        ...
 
 
 class DynamicDcopComputationMixin:

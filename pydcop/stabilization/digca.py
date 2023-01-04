@@ -349,17 +349,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         if msg.agent_id not in self.keep_alive_agents:
             self.keep_alive_agents.append(msg.agent_id)
 
-    def inspect_connections(self, agents_in_comm_range):
-        """
-        Removes out-of-range neighbors.
-        """
-        self.logger.debug(f'Inspecting connections: {agents_in_comm_range}')
-        for neighbor in self.neighbors:
-            if neighbor.agent_id not in agents_in_comm_range:
-                self.logger.debug(f'Agent {neighbor.agent_id}')
-                self.unregister_neighbor(neighbor, callback=self._on_neighbor_removed)
-
-    def _on_neighbor_removed(self, neighbor: Neighbor, *args, **kwargs):
+    def on_neighbor_removed(self, neighbor: Neighbor, *args, **kwargs):
         # if parent was removed, set state to in-active to allow a new parent search (connect call).
         if kwargs.get('neighbor_type', None) == 'parent':
             self.state = State.INACTIVE
