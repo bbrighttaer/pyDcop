@@ -102,8 +102,9 @@ import random
 from typing import Iterable, Dict
 
 from pydcop.algorithms import AlgoParameterDef, ComputationDef
-from pydcop.infrastructure.computations import Message, VariableComputation, \
+from pydcop.infrastructure.computations import VariableComputation, \
     register
+from pydcop.infrastructure.message_types import Message
 
 from pydcop.computations_graph.constraints_hypergraph import \
     VariableComputationNode

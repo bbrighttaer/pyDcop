@@ -38,11 +38,10 @@ from pydcop.infrastructure.agents import ResilientAgent, DynamicAgent
 from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT, MSG_ALGO
 from pydcop.infrastructure.computations import (
     MessagePassingComputation,
-    Message,
     build_computation,
 )
 from pydcop.infrastructure.discovery import Address
-from pydcop.infrastructure.message_types import AgentMovedMessage, SimTimeStepChanged
+from pydcop.infrastructure.message_types import AgentMovedMessage, SimTimeStepChanged, Message
 from pydcop.infrastructure.orchestrator import (
     DeployMessage,
     RunAgentMessage,

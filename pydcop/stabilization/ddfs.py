@@ -5,7 +5,8 @@ from pydcop.computations_graph.dynamic_graph import DynamicComputationNode
 from pydcop.dcop.relations import Constraint
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.communication import MSG_MGT
-from pydcop.infrastructure.computations import MessagePassingComputation, message_type
+from pydcop.infrastructure.computations import MessagePassingComputation
+from pydcop.infrastructure.message_types import message_type
 from pydcop.infrastructure.discovery import Discovery
 from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_MGT
 from pydcop.infrastructure.orchestrator import GraphConnectionMessage

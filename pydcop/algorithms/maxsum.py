@@ -97,8 +97,8 @@ from pydcop.infrastructure.computations import (
     SynchronousComputationMixin,
     VariableComputation,
     register,
-    Message,
 )
+from pydcop.infrastructure.message_types import Message
 
 GRAPH_TYPE = "factor_graph"
 logger = logging.getLogger("pydcop.maxsum")

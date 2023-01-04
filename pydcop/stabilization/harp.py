@@ -1,5 +1,6 @@
 from pydcop.infrastructure.agents import DynamicAgent
-from pydcop.infrastructure.computations import MessagePassingComputation, message_type
+from pydcop.infrastructure.computations import MessagePassingComputation
+from pydcop.infrastructure.message_types import message_type
 from pydcop.infrastructure.discovery import Discovery
 from pydcop.stabilization.ddfs import DistributedDFS
 

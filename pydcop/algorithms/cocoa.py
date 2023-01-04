@@ -5,7 +5,8 @@ import random
 import numpy as np
 
 from pydcop.algorithms import ComputationDef, AlgoParameterDef
-from pydcop.infrastructure.computations import VariableComputation, Message, register
+from pydcop.infrastructure.computations import VariableComputation, register
+from pydcop.infrastructure.message_types import Message
 from pydcop.stabilization.base import DynamicDcopComputationMixin
 
 # GRAPH_TYPE = "constraints_hypergraph"

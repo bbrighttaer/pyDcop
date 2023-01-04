@@ -52,10 +52,10 @@ from pydcop.algorithms import ComputationDef
 from pydcop.dcop.relations import assignment_cost, find_optimal
 from pydcop.infrastructure.computations import (
     VariableComputation,
-    message_type,
     register,
     SynchronousComputationMixin,
 )
+from pydcop.infrastructure.message_types import message_type
 
 # Type of computations graph that must be used with dsa
 GRAPH_TYPE = "constraints_hypergraph"

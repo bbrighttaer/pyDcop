@@ -6,9 +6,9 @@ from typing import Callable
 
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.communication import ComputationMessage, MSG_ALGO, MSG_MGT
-from pydcop.infrastructure.computations import MessagePassingComputation, message_type
+from pydcop.infrastructure.computations import MessagePassingComputation
 from pydcop.infrastructure.discovery import Discovery, BroadcastMessage
-from pydcop.infrastructure.message_types import SimTimeStepChanged
+from pydcop.infrastructure.message_types import SimTimeStepChanged, message_type
 from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_MGT, ORCHESTRATOR_DIRECTORY
 from pydcop.infrastructure.orchestrator import GraphConnectionMessage
 from pydcop.stabilization import Neighbor, Seconds, transient_communication
@@ -192,7 +192,11 @@ class DIGCA(DynamicGraphConstructionComputation):
     def _receive_announce_response(self, sender: str, msg: AnnounceResponse):
         self.logger.debug(f'Received announce response from {sender}: {msg}')
         if self.state == State.INACTIVE and self._assess_potential_neighbor(msg):
-            self._send_add_me_msg(msg)
+            if self.name == 'DIGCA-a2':
+                if sender == 'DIGCA-a0':
+                    self._send_add_me_msg(msg)
+            else:
+                self._send_add_me_msg(msg)
 
     def _assess_potential_neighbor(self, msg: AnnounceResponse):
         """
@@ -206,10 +210,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         -------
         True if agent satisfies requirement else False
         """
-        if msg.num_children < self._max_degree:
-            return True
-        else:
-            return False
+        return msg.num_children < self._max_degree
 
     def _receive_add_me(self, sender: str, msg: AddMe):
         if self.state == State.INACTIVE:
@@ -296,18 +297,6 @@ class DIGCA(DynamicGraphConstructionComputation):
         # execute computation (if topdown/async)
         self.execute_computations('top-down')
 
-    def receive_sim_step_changed(self, sender: str, msg: SimTimeStepChanged):
-        super(DIGCA, self).receive_sim_step_changed(sender, msg)
-
-        num_neighbors = msg.data['agents_in_comm_range']
-
-        if len(num_neighbors) > 0:
-            # remove agents that are out of range
-            self._inspect_connections(num_neighbors)
-
-            # broadcast connection request
-            self.connect()
-
     def _phi(self, agt_id) -> bool:
         """
         Implements phi using index of agents extracted from agent IDs. This function assumes that agents are named
@@ -360,7 +349,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         if msg.agent_id not in self.keep_alive_agents:
             self.keep_alive_agents.append(msg.agent_id)
 
-    def _inspect_connections(self, agents_in_comm_range):
+    def inspect_connections(self, agents_in_comm_range):
         """
         Removes out-of-range neighbors.
         """

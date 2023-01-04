@@ -40,11 +40,10 @@ from pydcop.dcop.objects import Variable, AgentDef
 from pydcop.infrastructure.agents import Agent
 from pydcop.infrastructure.communication import InProcessCommunicationLayer
 from pydcop.infrastructure.computations import (
-    Message,
-    message_type,
     MessagePassingComputation,
     register,
 )
+from pydcop.infrastructure.message_types import message_type, Message
 from pydcop.infrastructure.orchestratedagents import OrchestratedAgent
 from pydcop.infrastructure.orchestrator import RunAgentMessage, Orchestrator
 from pydcop.utils.simple_repr import simple_repr

@@ -31,7 +31,8 @@
 
 import logging
 
-from pydcop.infrastructure.computations import Message, register
+from pydcop.infrastructure.computations import register
+from pydcop.infrastructure.message_types import Message
 from pydcop.algorithms.amaxsum import MaxSumFactorComputation, MaxSumVariableComputation
 from pydcop.algorithms.maxsum import MaxSumMessage
 from pydcop.dcop.relations import NeutralRelation

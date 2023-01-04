@@ -107,9 +107,9 @@ from pydcop.infrastructure.computations import (
     VariableComputation,
     SynchronousComputationMixin,
     register,
-    message_type,
     ComputationException,
 )
+from pydcop.infrastructure.message_types import message_type
 
 GRAPH_TYPE = "pseudotree"
 

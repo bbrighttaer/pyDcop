@@ -38,7 +38,7 @@ import pydcop.algorithms
 import pydcop.dcop.relations
 import pydcop.utils
 import pydcop.utils.various
-from pydcop.infrastructure.computations import Message
+from pydcop.infrastructure.message_types import Message
 from pydcop.dcop.objects import VariableDomain, Variable, VariableWithCostFunc
 from pydcop.dcop.relations import (
     UnaryFunctionRelation,

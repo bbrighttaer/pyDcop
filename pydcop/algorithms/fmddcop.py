@@ -12,7 +12,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from pydcop.algorithms import AlgoParameterDef, ComputationDef
-from pydcop.infrastructure.computations import VariableComputation, message_type, register
+from pydcop.infrastructure.computations import VariableComputation, register
+from pydcop.infrastructure.message_types import message_type
 from pydcop.fmddcop.math import math
 
 GRAPH_TYPE = "constraints_hypergraph"

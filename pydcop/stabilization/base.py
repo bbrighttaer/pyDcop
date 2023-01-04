@@ -1,5 +1,6 @@
 import datetime
 import logging
+import threading
 import time
 from collections import defaultdict
 from typing import List, Callable, Union
@@ -11,10 +12,10 @@ from pydcop.computations_graph.pseudotree import PseudoTreeLink
 from pydcop.dcop.objects import Variable, VariableDomain
 from pydcop.dcop.relations import AsyncNaryFunctionRelation, AsyncNAryMatrixRelation
 from pydcop.infrastructure.agents import DynamicAgent
-from pydcop.infrastructure.computations import MessagePassingComputation, Message, register
+from pydcop.infrastructure.computations import MessagePassingComputation, register
 from pydcop.infrastructure.discovery import Discovery
 from pydcop.infrastructure.message_types import ConstraintEvaluationResponse, AgentMovedMessage, SimTimeStepChanged, \
-    DcopExecutionMessage, DcopConfigurationMessage, DcopInitializationMessage
+    DcopExecutionMessage, DcopConfigurationMessage, DcopInitializationMessage, Message
 from pydcop.infrastructure.orchestrator import RunAgentMessage
 from pydcop.stabilization import Neighbor
 
@@ -122,6 +123,8 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         -------
 
         """
+        prior_neighbors = set(self.neighbor_ids)
+
         self.logger.info(f'Received simulation time step changed: {msg}')
         self.domain = msg.data['agent_domain']
         self.current_position = msg.data['current_position']
@@ -130,10 +133,24 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         # initialize dcop algorithm
         self.initialize_computations()
 
-        # cater for single agent case (when there are no agents in range for connection)
-        if len(msg.data['agents_in_comm_range']) == 0:
-            self.configure_dcop_computation()
-            self.execute_computations(exec_order='single-agent')
+        agents_in_comm_range = set(msg.data['agents_in_comm_range'])
+
+        # remove agents that are out of range
+        self.inspect_connections(agents_in_comm_range)
+
+        # configuration
+        self.logger.debug('configure call in time step changed receiver')
+        self.configure_dcop_computation()
+
+        is_affected = prior_neighbors != agents_in_comm_range
+
+        if is_affected:
+            self.logger.debug(f'Neighborhood change detected')
+            # broadcast connection request
+            self.connect()
+        else:
+            self.logger.debug('No neighborhood change detected')
+            self.execute_computations(exec_order='no-new-neighbor')
 
     def initialize_computations(self):
         # send DCOP initialization message
@@ -182,6 +199,12 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
                     msg=DcopExecutionMessage(),
                 )
 
+    def connect(self):
+        raise NotImplementedError('Connection function has not been implemented yet')
+
+    def inspect_connections(self, agents_in_comm_range):
+        raise NotImplementedError('Connection inspection function has not been implemented yet')
+
 
 class DynamicDcopComputationMixin:
     """
@@ -193,10 +216,17 @@ class DynamicDcopComputationMixin:
         self.async_func_return_val = {}
 
     def initialize(self):
-        raise NotImplementedError('Implement initialization method in inherited class')
+        raise NotImplementedError('Implement initialization method in child class')
 
     def start_dcop(self):
-        raise NotImplementedError('Implement start_dcop in inherited class')
+        raise NotImplementedError('Implement start_dcop method in child class')
+
+    def on_computation_node_configured_cb(self):
+        """
+        Called when the computation definition node has been configured. This can be leveraged in the DCOP algorithm
+        implementation to execute any ops that should follow after the computation node has been set up.
+        """
+        ...
 
     @register('dcop_initialization_message')
     def _on_dcop_initialization_message(self, sender: str, recv_msg: DcopInitializationMessage, t: int):
@@ -227,11 +257,7 @@ class DynamicDcopComputationMixin:
         links = []
         dynamic_node: DynamicComputationNode = self.computation_def.node
 
-        # select relation/constraint class based on DCOP algorithm use
-        relation_class = {
-            'cocoa': AsyncNaryFunctionRelation,
-            'ddpop': AsyncNAryMatrixRelation,
-        }.get(self.computation_def.algo.algo)
+        relation_class = get_relation_class(self.computation_def.algo.algo)
 
         if dynamic_node.type == constraints_hypergraph.GRAPH_NODE_TYPE:
             neighbors = [parent] if parent else []
@@ -300,6 +326,9 @@ class DynamicDcopComputationMixin:
         dynamic_node.neighbors = list(set(n for l in links for n in l.nodes if n != dynamic_node.name))
         self.logger.debug(f'constraints = {constraints}, links = {links}, neighbors = {dynamic_node.neighbors}')
 
+        # callback
+        self.on_computation_node_configured_cb()
+
     @register('dcop_execution_message')
     def _on_dcop_execution_message(self, sender: str, recv_msg: DcopExecutionMessage, t: int):
         self.logger.info(f'DCOP execution message: {recv_msg}')
@@ -320,3 +349,12 @@ class DynamicDcopComputationMixin:
         self.position_history.append(position)
 
 
+def get_relation_class(algo_name):
+    """
+    Select relation/constraint class based on DCOP algorithm use
+    """
+    relation_class = {
+        'cocoa': AsyncNaryFunctionRelation,
+        'ddpop': AsyncNAryMatrixRelation,
+    }.get(algo_name)
+    return relation_class

@@ -92,9 +92,9 @@ from pydcop.dcop.relations import (
 from pydcop.infrastructure.computations import (
     VariableComputation,
     register,
-    message_type,
     DcopComputation,
 )
+from pydcop.infrastructure.message_types import message_type
 
 # Type of computations graph that must be used with dsa
 GRAPH_TYPE = "constraints_hypergraph"

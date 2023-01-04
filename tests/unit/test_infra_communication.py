@@ -42,7 +42,7 @@ from pydcop.infrastructure.communication import Messaging, \
     InProcessCommunicationLayer, \
     MPCHttpHandler, HttpCommunicationLayer, ComputationMessage, \
     UnreachableAgent, MSG_MGT, UnknownAgent, UnknownComputation, MSG_ALGO
-from pydcop.infrastructure.computations import Message
+from pydcop.infrastructure.message_types import Message
 from pydcop.infrastructure.discovery import Discovery
 
 

@@ -154,8 +154,8 @@ from pydcop.dcop.relations import assignment_cost, Constraint
 from pydcop.infrastructure.computations import (
     VariableComputation,
     register,
-    message_type,
 )
+from pydcop.infrastructure.message_types import message_type
 
 GRAPH_TYPE = "ordered_graph"
 

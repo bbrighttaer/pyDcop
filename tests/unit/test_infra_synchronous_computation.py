@@ -8,12 +8,12 @@ from pydcop.computations_graph.objects import ComputationNode
 from pydcop.infrastructure.computations import (
     MessagePassingComputation,
     register,
-    message_type,
     SynchronousComputationMixin,
     SynchronizationMsg,
     ComputationException,
     DcopComputation,
 )
+from pydcop.infrastructure.message_types import message_type
 
 FooMsg = message_type("FooMsg", ["data"])
 

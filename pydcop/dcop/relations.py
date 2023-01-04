@@ -1861,6 +1861,8 @@ class AsyncNAryMatrixRelation(AbstractBaseRelation, SimpleRepr):
         name = comp.name + '-c' + str(datetime.datetime.now().timestamp())
         super().__init__(name)
         self._comp = comp
+        if len(set([v.name for v in variables])) != len(variables):
+            raise Exception(f'duplicates found')
         self._variables = list(variables)
         shape = tuple([len(v.domain) for v in variables])
         if matrix is None:
@@ -1941,25 +1943,14 @@ class AsyncNAryMatrixRelation(AbstractBaseRelation, SimpleRepr):
                     "Needs an assignment when requesting value "
                     "in a n-ary relation, n!=0"
                 )
+
         if isinstance(var_values, list):
-            assignt = {self._variables[i].name: val for i, val in enumerate(var_values)}
-            sliced_relation = self.slice(assignt)
-
-        elif isinstance(var_values, dict):
-            sliced_relation = self.slice(var_values)
-
-        else:
-            raise ValueError("Assignment must be dict or array")
-
-        # compile variables/agents to be considered in the constraint evaluation
-        sliced_var_values = {
-          v.name: var_values[v.name] for v in sliced_relation._variables
-        }
+            var_values = {self._variables[i].name: val for i, val in enumerate(var_values)}
 
         # send constraint evaluation request to sim environment
         self._comp.post_msg(
             target='_sim_env_orchestrator',
-            msg=ConstraintEvaluationRequest(self.name, sliced_var_values),
+            msg=ConstraintEvaluationRequest(self.name, var_values),
         )
 
         # wait for data from sim environment
@@ -2013,9 +2004,9 @@ class AsyncNAryMatrixRelation(AbstractBaseRelation, SimpleRepr):
             values = []
             for v in self._variables:
                 values.append(var_values[v.name])
-            _, s = self._slice_matrix([v.name for v in self._variables], values)
+            # _, s = self._slice_matrix([v.name for v in self._variables], values)
             matrix = np.copy(self._m)
-            matrix.itemset(s, rel_value)
+            # matrix.itemset(s, rel_value)
             return AsyncNAryMatrixRelation(self._comp, self._variables, matrix)
         raise ValueError("Could not set value, must be list or dict")
 

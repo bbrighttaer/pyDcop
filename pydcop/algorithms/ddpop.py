@@ -59,12 +59,11 @@ from pydcop.algorithms import ALGO_STOP, ALGO_CONTINUE, ComputationDef
 from pydcop.computations_graph.pseudotree import get_dfs_relations
 from pydcop.dcop.objects import Variable
 from pydcop.dcop.relations import (
-    NAryMatrixRelation,
     find_arg_optimal,
-    join,
-    projection, async_rel_join, async_rel_projection, AsyncNAryMatrixRelation,
+    async_rel_join, async_rel_projection, AsyncNAryMatrixRelation,
 )
-from pydcop.infrastructure.computations import Message, VariableComputation, register
+from pydcop.infrastructure.computations import VariableComputation, register
+from pydcop.infrastructure.message_types import Message
 from pydcop.stabilization.base import DynamicDcopComputationMixin
 
 GRAPH_TYPE = "pseudotree"
@@ -106,6 +105,8 @@ class DpopMessage(Message):
             # VALUE message are a value assignment for each var in the
             # separator of the sender
             return len(self.content[0]) * 2
+        elif self.type == "UTIL_REQ":
+            return 1
 
     def __str__(self):
         return f"DpopMessage({self._msg_type}, {self._content})"
@@ -176,8 +177,7 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
 
         super().__init__(comp_def.node.variable, comp_def)
         self._mode = comp_def.algo.mode
-
-        # self._initialize()
+        self._utils = {}
 
     def footprint(self):
         return computation_memory(self.computation_def.node)
@@ -190,7 +190,15 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
     def is_leaf(self):
         return len(self._children) == 0
 
-    def _initialize(self, ):
+    def initialize(self):
+        self.logger.debug('DCOP initialized')
+
+        # clear previous value if any
+        self.current_value = None
+
+        self._utils.clear()
+
+    def on_computation_node_configured_cb(self):
         self._parent, self._pseudo_parents, self._children, self._pseudo_children = get_dfs_relations(
             self.computation_def.node
         )
@@ -208,20 +216,12 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
                 if descendant in names:
                     constraints.remove(r)
                     break
+
         self._constraints = constraints
         self.logger.debug(
             f"Constraints for computation {self.name}: {self._constraints} "
         )
-        if hasattr(self._variable, "cost_for_val"):
-            costs = []
-            for d in self._variable.domain:
-                costs.append(self._variable.cost_for_val(d))
-            self._joined_utils = AsyncNAryMatrixRelation(
-                self, [self._variable], costs,
-            )
-
-        else:
-            self._joined_utils = AsyncNAryMatrixRelation(self, [])
+        self._set_join_utils()
         self._children_separator = {}
         self._waited_children = []
         if not self.is_leaf:
@@ -232,6 +232,19 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
             # running on_start, if this child computation start faster of
             # before us
             self._waited_children = list(self._children)
+            self.logger.debug(f'waited children: {self._waited_children}')
+
+    def _set_join_utils(self):
+        if hasattr(self._variable, "cost_for_val"):
+            costs = []
+            for d in self._variable.domain:
+                costs.append(self._variable.cost_for_val(d))
+            self._joined_utils = AsyncNAryMatrixRelation(
+                self, [self._variable], costs,
+            )
+
+        else:
+            self._joined_utils = AsyncNAryMatrixRelation(self, [])
 
     def start_dcop(self):
         if self.is_leaf and not self.is_root:
@@ -342,11 +355,11 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
             message timestamp
 
         """
-        self.logger.debug(f"UTIL from {variable_name} : {recv_msg.content} at {t}")
+        self.logger.debug(f"UTIL from {variable_name} : {recv_msg.content} at {t} {self._joined_utils}")
         utils = recv_msg.content
 
         # accumulate util messages until we got the UTIL from all our children
-        self._joined_utils = join(self._joined_utils, utils)
+        self._joined_utils = async_rel_join(self, self._joined_utils, utils)
         try:
             self._waited_children.remove(variable_name)
         except ValueError as e:
@@ -354,6 +367,7 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
                 f"Unexpected UTIL message from {variable_name} on {self.name} : {recv_msg} "
             )
             raise e
+
         # keep a reference of the separator of this children, we need it when
         # computing the value message
         self._children_separator[variable_name] = utils.dimensions
@@ -367,7 +381,7 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
                 # The root obviously has no parent nor pseudo parent, yet it
                 # may have unary relations (with it-self!)
                 for r in self._constraints:
-                    self._joined_utils = join(self._joined_utils, r)
+                    self._joined_utils = async_rel_join(self, self._joined_utils, r)
 
                 values, current_cost = find_arg_optimal(
                     self._variable, self._joined_utils, self._mode
@@ -392,9 +406,36 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
                     f"On UTIL from {variable_name}, send UTIL to parent {self._parent} "
                 )
                 self.post_msg(self._parent, msg)
+        else:
+            self.logger.debug(f'Waiting for UTIL msgs: waited children {self._waited_children}, '
+                              f'children={self._children}')
+
+            # send util requests to children yet to send UTIL msgs
+            self._send_util_request()
+
+    def _send_util_request(self):
+        # send reminders to children that are yet to send UTIL msg
+        for child in self._waited_children:
+            self.logger.debug(f'Posting UTIL request to {child}')
+            self.post_msg(
+                target=child,
+                msg=DpopMessage('UTIL_REQ', None),
+            )
+
+    @register("UTIL_REQ")
+    def _on_util_request(self, variable_name, recv_msg, t) -> None:
+        self.logger.debug(f'Received UTIL request from {variable_name}: {recv_msg}')
+
+        # if this child is a leaf or has no children to wait then send UTIL to parent
+        if self.is_leaf or len(self._waited_children) == 0:
+            self.logger.debug(f'Responding to UTIL request from {variable_name}')
+            util = self._compute_utils_msg()
+            msg = DpopMessage("UTIL", util)
+            self.post_msg(self._parent, msg)
+        elif len(self._waited_children) > 0:
+            self._send_util_request()
 
     def _compute_utils_msg(self):
-
         for r in self._constraints:
             self._joined_utils = async_rel_join(self, self._joined_utils, r)
 

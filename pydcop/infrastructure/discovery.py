@@ -70,8 +70,8 @@ from typing import Callable, List, Optional, Any, Dict, Tuple, Union
 from collections import defaultdict
 from typing import Set
 
-from pydcop.infrastructure.computations import MessagePassingComputation, \
-    Message, message_type
+from pydcop.infrastructure.computations import MessagePassingComputation
+from pydcop.infrastructure.message_types import message_type, Message
 
 Address = Any
 MSG_DISCOVERY = 5  # low value : discovery message have a very high priority

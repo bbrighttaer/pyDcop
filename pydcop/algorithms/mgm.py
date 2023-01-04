@@ -63,7 +63,8 @@ from pydcop.dcop.relations import (
     find_arg_optimal,
     optimal_cost_value,
 )
-from pydcop.infrastructure.computations import Message, VariableComputation, register
+from pydcop.infrastructure.computations import VariableComputation, register
+from pydcop.infrastructure.message_types import Message
 
 GRAPH_TYPE = "constraints_hypergraph"
 

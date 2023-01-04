@@ -57,7 +57,8 @@ from random import choice
 from typing import Iterable
 
 from pydcop.computations_graph.pseudotree import get_dfs_relations
-from pydcop.infrastructure.computations import Message, VariableComputation, register
+from pydcop.infrastructure.computations import VariableComputation, register
+from pydcop.infrastructure.message_types import Message
 from pydcop.dcop.objects import Variable
 from pydcop.dcop.relations import (
     NAryMatrixRelation,

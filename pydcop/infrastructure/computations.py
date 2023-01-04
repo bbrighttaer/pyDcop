@@ -41,191 +41,15 @@ import logging
 import threading
 from functools import wraps
 from importlib import import_module
-from threading import Lock
+from queue import Queue
 from typing import List, Tuple, Any, Callable, Dict, Optional
 
 from numpy import random
 
 from pydcop.algorithms import ComputationDef, load_algorithm_module
 from pydcop.dcop.objects import Variable
-from pydcop.utils.simple_repr import SimpleRepr, SimpleReprException, simple_repr
+from pydcop.infrastructure.message_types import ASYNC_MSG_TYPES, Message
 from pydcop.infrastructure.Events import event_bus
-
-
-class Message(SimpleRepr):
-    """
-    Base class for messages.
-
-    you generally sub-class ``Message`` to define the message type for a DCOP
-    algorithm.
-    Alternatively you can use :py:func:`message_type` to create
-    your own message type.
-
-
-    Parameters
-    ----------
-    msg_type: str
-       the message type ; this will be used to select the correct handler
-       for a message in a DcopComputation instance.
-    content: Any
-       optional, usually you sub-class Message and add your own content
-       attributes.
-
-    """
-
-    def __init__(self, msg_type, content=None):
-        self._msg_type = msg_type
-        self._content = content
-
-    @property
-    def size(self):
-        """
-        Returns the size of the message.
-
-        You should overwrite this methods in subclasses,
-        will be used when computing the communication load of an
-        algorithm and by some distribution methods that optimize
-        the distribution of computation for communication load.
-
-        Returns
-        -------
-        size : int
-
-        """
-        return 0
-
-    @property
-    def type(self) -> str:
-        """
-        The type of the message.
-
-        Returns
-        -------
-        message_type: str
-        """
-        return self._msg_type
-
-    @property
-    def content(self):
-        return self._content
-
-    def __str__(self):
-        return f"Message({self.type})"
-
-    def __repr__(self):
-        return f"Message({self.type}, {self.content})"
-
-    def __eq__(self, other):
-        if type(other) != type(self):
-            return False
-        return self.type == other.type and self.content == other.content
-
-
-def message_type(msg_type: str, fields: List[str]):
-    """
-    Class factory method for Messages
-
-    This utility method can be used to easily define new Message type without
-    subclassing explicitly (and manually) the Message class. Tt output a
-    class object which subclass Message.
-
-    Message instance can be created from the return class type using either
-    keywords arguments or positional arguments (but not both at the same time).
-
-    Instances from Message classes created with `message_type` support
-    equality, simple_repr and have a meaningful str representation.
-
-    Parameters
-    ----------
-    msg_type: str
-        The type of the message, this will be return by `msg.type` (see example)
-    fields: List[str]
-        The fields in the message
-
-    Returns
-    -------
-    A class type that can be used as a message type.
-
-    Example
-    -------
-
-    >>> MyMessage = message_type('MyMessage', ['foo', 'bar'])
-    >>> msg1 = MyMessage(foo=42, bar=21)
-    >>> msg = MyMessage(42, 21)
-    >>> msg.foo
-    42
-    >>> msg.type
-    'MyMessage'
-    >>> msg.size
-    0
-    """
-
-    def __init__(self, *args, **kwargs):
-        if args and kwargs:
-            raise ValueError("Use positional or keyword arguments, but not " "both")
-        if args:
-            if len(args) != len(fields):
-                raise ValueError("Wrong number of positional arguments")
-            for f, a in zip(fields, args):
-                setattr(self, f, a)
-
-        for k, v in kwargs.items():
-            if k not in fields:
-                raise ValueError("Invalid field {k} in {msg_type}")
-            setattr(self, k, v)
-        Message.__init__(self, msg_type, None)
-
-    def to_str(self):
-        fs = ", ".join([f + ": " + str(getattr(self, f)) for f in fields])
-        return msg_type + "(" + fs + ")"
-
-    def _simple_repr(self):
-
-        # Full name = module + qualifiedname (for inner classes)
-        r = {
-            "__module__": self.__module__,
-            "__qualname__": "message_type",
-            "__type__": self.__class__.__qualname__,
-        }
-        for arg in fields:
-            try:
-                val = getattr(self, arg)
-                r[arg] = simple_repr(val)
-            except AttributeError:
-                if hasattr(self, "_repr_mapping") and arg in self._repr_mapping:
-                    try:
-                        r[arg] = self.__getattribute__(self._repr_mapping[arg])
-                    except AttributeError:
-                        SimpleReprException(
-                            f"Invalid repr_mapping in {self}, "
-                            "no attribute for {self._repr_mapping[arg]}"
-                        )
-
-                else:
-                    raise SimpleReprException(
-                        "Could not build repr for {self}, " "no attribute for {arg}"
-                    )
-        return r
-
-    def equals(self, other):
-        if self.type != other.type:
-            return False
-        if self.__dict__ != other.__dict__:
-            return False
-        return True
-
-    msg_class = type(
-        msg_type,
-        (Message,),
-        {
-            "__init__": __init__,
-            "__str__": to_str,
-            "__repr__": to_str,
-            "_simple_repr": _simple_repr,
-            "__eq__": equals,
-        },
-    )
-    return msg_class
 
 
 class ComputationException(Exception):
@@ -306,6 +130,12 @@ class MessagePassingComputation(object, metaclass=ComputationMetaClass):
         self._paused_messages_post = []  # type: List[Tuple[str, Any, int, Any]]
         self._paused_messages_recv = []  # type: List[Tuple[str, Any, float]]
 
+        # properties for handling synchronous and async message types
+        self._sync_msg_queue = Queue()
+        self._async_msg_queue = Queue()
+        self._sync_msg_handling_thread = threading.Thread(target=self._sync_msg_handler, daemon=True)
+        self._async_msg_handling_thread = threading.Thread(target=self._async_msg_handler, daemon=True)
+
     @property
     def name(self) -> str:
         """
@@ -371,6 +201,10 @@ class MessagePassingComputation(object, metaclass=ComputationMetaClass):
         """
         self._running = True
         self.on_start()
+
+        # start message handler threads
+        self._async_msg_handling_thread.start()
+        self._sync_msg_handling_thread.start()
 
         pending_msg_count = 0
         while self._paused_messages_recv:
@@ -505,8 +339,12 @@ class MessagePassingComputation(object, metaclass=ComputationMetaClass):
             event_bus.send(
                 "computations.message_rcv." + self.name, (self.name, msg.size)
             )
-            # execute message handler on a separate thread
-            threading.Thread(target=self._handle_msg, args=(msg, sender, t), daemon=True).start()
+
+            # separate msgs into sync and async queues
+            if msg.type in ASYNC_MSG_TYPES:
+                self._async_msg_queue.put((msg, sender, t))
+            else:
+                self._sync_msg_queue.put((msg, sender, t))
         else:
             self.logger.debug(
                 f"Storing message from {sender} to {self.name} {msg} . "
@@ -519,6 +357,18 @@ class MessagePassingComputation(object, metaclass=ComputationMetaClass):
             self._decorated_handlers[msg.type](self, sender, msg, t)
         except KeyError:
             self._msg_handlers[msg.type](sender, msg, t)
+
+    def _sync_msg_handler(self):
+        while True:
+            msg, sender, t = self._sync_msg_queue.get()
+            self._handle_msg(msg, sender, t)
+
+    def _async_msg_handler(self):
+        while True:
+            msg, sender, t = self._async_msg_queue.get()
+
+            # execute message handler on a separate thread
+            threading.Thread(target=self._handle_msg, args=(msg, sender, t), daemon=True).start()
 
     def post_msg(self, target: str, msg, prio: int = None, on_error=None):
         """

@@ -55,10 +55,10 @@ from pydcop.infrastructure import notify_wrap
 from pydcop.infrastructure.agents import Agent, AgentException
 from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT, InProcessCommunicationLayer, \
     HttpCommunicationLayer
-from pydcop.infrastructure.computations import Message, message_type, \
-    MessagePassingComputation
+from pydcop.infrastructure.computations import MessagePassingComputation
 from pydcop.infrastructure.discovery import Directory, UnknownAgent, BroadcastMessage
-from pydcop.infrastructure.message_types import ConstraintEvaluationResponse, AgentMovedMessage, SimTimeStepChanged
+from pydcop.infrastructure.message_types import ConstraintEvaluationResponse, AgentMovedMessage, SimTimeStepChanged, \
+    message_type, Message
 from pydcop.reparation.removal import _removal_candidate_agents, \
     _removal_orphaned_computations, _removal_candidate_agt_info
 

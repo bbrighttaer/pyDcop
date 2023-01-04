@@ -19,7 +19,8 @@ from numpy import random
 from pydcop.algorithms import ComputationDef
 from pydcop.dcop.relations import assignment_cost
 from pydcop.infrastructure.computations import VariableComputation, \
-    message_type, register
+    register
+from pydcop.infrastructure.message_types import message_type
 
 # Type of computations graph that must be used with dsa
 GRAPH_TYPE = 'constraints_hypergraph'

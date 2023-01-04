@@ -43,9 +43,9 @@ from pydcop.algorithms import ComputationDef
 from pydcop.infrastructure.agents import Agent
 from pydcop.infrastructure.computations import (
     MessagePassingComputation,
-    Message,
     register,
 )
+from pydcop.infrastructure.message_types import Message
 from pydcop.infrastructure.discovery import Discovery, Address, UnknownComputation
 from pydcop.replication.path_utils import (
     Node,
