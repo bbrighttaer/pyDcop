@@ -8,9 +8,8 @@ from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.communication import ComputationMessage, MSG_ALGO, MSG_MGT
 from pydcop.infrastructure.computations import MessagePassingComputation
 from pydcop.infrastructure.discovery import Discovery, BroadcastMessage
-from pydcop.infrastructure.message_types import SimTimeStepChanged, message_type
+from pydcop.infrastructure.message_types import SimTimeStepChanged, message_type, GraphConnectionMessage
 from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_MGT, ORCHESTRATOR_DIRECTORY
-from pydcop.infrastructure.orchestrator import GraphConnectionMessage
 from pydcop.stabilization import Neighbor, Seconds, transient_communication
 from pydcop.stabilization.base import DynamicGraphConstructionComputation
 

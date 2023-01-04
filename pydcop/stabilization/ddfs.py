@@ -6,10 +6,9 @@ from pydcop.dcop.relations import Constraint
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.communication import MSG_MGT
 from pydcop.infrastructure.computations import MessagePassingComputation
-from pydcop.infrastructure.message_types import message_type
+from pydcop.infrastructure.message_types import message_type, GraphConnectionMessage
 from pydcop.infrastructure.discovery import Discovery
 from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_MGT
-from pydcop.infrastructure.orchestrator import GraphConnectionMessage
 from pydcop.stabilization import Neighbor, AgentID, MaxDegree
 from pydcop.stabilization.base import DynamicGraphConstructionComputation
 

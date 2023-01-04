@@ -213,3 +213,11 @@ ASYNC_MSG_TYPES = [
     'constraint_evaluation_request',
     'constraint_evaluation_response',
 ]
+
+# A GraphConnectionMessage is sent by an agent to the orchestrator when
+# the agent connects to another agent, or it is disconnected from another agent.
+# Possible values of `action` are `add`, `remove`, and `remove_node`
+GraphConnectionMessage = message_type(
+    'graph_connection',
+    ['node1', 'node2', 'action']
+)

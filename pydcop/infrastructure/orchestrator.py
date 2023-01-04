@@ -58,7 +58,7 @@ from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT, InP
 from pydcop.infrastructure.computations import MessagePassingComputation
 from pydcop.infrastructure.discovery import Directory, UnknownAgent, BroadcastMessage
 from pydcop.infrastructure.message_types import ConstraintEvaluationResponse, AgentMovedMessage, SimTimeStepChanged, \
-    message_type, Message
+    message_type, Message, GraphConnectionMessage
 from pydcop.reparation.removal import _removal_candidate_agents, \
     _removal_orphaned_computations, _removal_candidate_agt_info
 
@@ -653,14 +653,6 @@ AgentRemovedMessage = message_type('agent_removed', [])
 
 RepairDoneMessage = message_type('repair_done',
                                  ['agent', 'selected_computations', 'metrics'])
-
-# A GraphConnectionMessage is sent by an agent to the orchestrator when
-# the agent connects to another agent, or it is disconnected from another agent.
-# Possible values of `action` are `add`, `remove`, and `remove_node`
-GraphConnectionMessage = message_type(
-    'graph_connection',
-    ['node1', 'node2', 'action']
-)
 
 # RunStabilizationMessage is sent by the orchestrator to a registered agent to request
 # that the agent runs its stabilization algorithm
