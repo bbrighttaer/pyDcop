@@ -333,7 +333,7 @@ class DynamicDcopComputationMixin:
 
     @register('constraint_evaluation_response')
     def _on_constraint_evaluation_response(self, sender: str, recv_msg: ConstraintEvaluationResponse, t: int):
-        self.logger.debug(f'Received constraint evaluation response: {recv_msg} from {sender}')
+        # self.logger.debug(f'Received constraint evaluation response: {recv_msg} from {sender}')
         self.async_func_return_val[recv_msg.constraint_name] = recv_msg.value
 
     @register('agent_moved')

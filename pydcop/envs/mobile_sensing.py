@@ -281,7 +281,7 @@ class GridWorld(SimulationEnvironment):
         return actions
 
     def _on_constraint_evaluation_msg(self, sender: str, msg: ConstraintEvaluationRequest, t: float):
-        self.logger.debug(f'Received constraint evaluation msg: {msg} from {sender}')
+        # self.logger.debug(f'Received constraint evaluation msg: {msg} from {sender}')
 
         selected_cells = {}
         score = 0.
@@ -337,7 +337,7 @@ class GridWorld(SimulationEnvironment):
         score = 0.
         for agt in self.agents:
             score += self.calc_agent_score(self.agents[agt])
-        # self._disable_detected_targets()
+        self._disable_detected_targets()
         return 0, score
 
     def calc_agent_score(self, agent: MobileSensingAgent):
