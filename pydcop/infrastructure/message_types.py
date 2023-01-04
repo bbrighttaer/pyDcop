@@ -188,7 +188,7 @@ ConstraintEvaluationResponse = message_type(
 )
 
 AgentMovedMessage = message_type(
-    'agent_moved', ['position']
+    'agent_moved', ['prev_position', 'new_position']
 )
 
 # SimTimeStepChange is sent by the orchestrator to all agents when the simulation environment changes its times step

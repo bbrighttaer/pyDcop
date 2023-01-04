@@ -327,7 +327,11 @@ class GridWorld(SimulationEnvironment):
                 self.logger.debug(f'Agent {msg.agent} changed from {current_agt_cell.cell_id} to {new_cell.cell_id}')
 
                 if callable(on_action_cb):
-                    on_action_cb(target=sender, position=new_cell.cell_id)
+                    on_action_cb(
+                        target=sender,
+                        prev_position=current_agt_cell.cell_id,
+                        new_position=new_cell.cell_id,
+                    )
 
     def calculate_global_score(self) -> Tuple[int, float]:  # number of violations, score
         score = 0.

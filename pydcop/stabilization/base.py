@@ -237,11 +237,6 @@ class DynamicDcopComputationMixin:
         # todo: refactor this method, it should not recreate all existing/unchanged connections
         self.logger.debug(f'DCOP configuration message: {recv_msg}')
 
-        # when starting, record the starting position of the agent.
-        # subsequent position information are carried by AgentMovedMessage
-        if not hasattr(self, 'position_history'):
-            self.record_current_position(recv_msg.data['current_position'])
-
         neighbor_domains = recv_msg.data['neighbor_domains']
 
         # get msg components
@@ -343,10 +338,7 @@ class DynamicDcopComputationMixin:
 
     @register('agent_moved')
     def _on_agent_moved_msg(self, sender: str, recv_msg: AgentMovedMessage, t: int):
-        self.record_current_position(recv_msg.position)
-
-    def record_current_position(self, position):
-        self.position_history.append(position)
+        self.position_history.append(f'from {recv_msg.prev_position} to {recv_msg.new_position}')
 
 
 def get_relation_class(algo_name):

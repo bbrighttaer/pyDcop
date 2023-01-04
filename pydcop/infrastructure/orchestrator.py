@@ -580,11 +580,16 @@ class DynamicOrchestrator(Orchestrator):
         )
 
     def _on_agent_moved_cb(self, *args, **kwargs):
-        if 'target' in kwargs and 'position' in kwargs:
+        expected_args = {'target', 'new_position', 'prev_position'}
+        is_valid = expected_args & set(kwargs) == expected_args
+        if is_valid:
             # send movement confirmation
             self.mgt.post_msg(
                 target=kwargs['target'],
-                msg=AgentMovedMessage(position=kwargs['position']),
+                msg=AgentMovedMessage(
+                    prev_position=kwargs['prev_position'],
+                    new_position=kwargs['new_position'],
+                ),
             )
 
     def on_simulation_ended(self):
