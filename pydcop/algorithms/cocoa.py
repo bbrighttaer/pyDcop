@@ -336,7 +336,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
             d_vals = np.array(self.variable.domain.values)
             rho = d_vals[opt_indices].tolist()
         else:
-            max_val = delta.max()
+            max_val = delta._max()
             opt_indices = np.asarray(delta == max_val).nonzero()[0]
             d_vals = np.array(self.variable.domain.values)
             rho = d_vals[opt_indices].tolist()

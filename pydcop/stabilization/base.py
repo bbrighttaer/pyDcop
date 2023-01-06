@@ -35,6 +35,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         self.children: List[Neighbor] = []
         self.domain = []
         self.neighbor_domains = {}
+        self.agents_in_comm_range = []
 
         # tracks the last time a neighbor sent a message
         self.last_contact_time = {}
@@ -121,7 +122,6 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         -------
 
         """
-        prior_neighbors = set(self.neighbor_ids)
 
         self.logger.info(f'Received simulation time step changed: {msg}')
         self.domain = msg.data['agent_domain']
@@ -131,16 +131,17 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         # initialize dcop algorithm
         self.initialize_computations()
 
-        agents_in_comm_range = set(msg.data['agents_in_comm_range'])
+        self.agents_in_comm_range = set(msg.data['agents_in_comm_range'])
 
         # remove agents that are out of range
-        self.inspect_connections(agents_in_comm_range)
+        self.inspect_connections(self.agents_in_comm_range)
 
         # configuration
         self.logger.debug('configure call in time step changed receiver')
         self.configure_dcop_computation()
 
-        is_affected = prior_neighbors != agents_in_comm_range
+        prior_neighbors = set(self.neighbor_ids)
+        is_affected = prior_neighbors != self.agents_in_comm_range
 
         if is_affected:
             self.logger.debug(f'Neighborhood change detected')

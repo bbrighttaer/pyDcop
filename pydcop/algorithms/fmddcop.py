@@ -260,7 +260,7 @@ class FMDDCOP(ModelFreeDynamicDCOP):
         if random.random() < 0.1:
             val = random.randint(0, len(action_vectors) - 1)
         else:
-            val = output.max(0)[1]
+            val = output._max(0)[1]
             val = val.item()
 
         return val

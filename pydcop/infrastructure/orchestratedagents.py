@@ -391,8 +391,9 @@ class OrchestrationComputation(MessagePassingComputation):
 
     def _on_simulation_time_step_change(self, sender: str, msg: SimTimeStepChanged, t: float):
         self.logger.info(f'Simulation time step changed: {msg}')
+        # Forward time step change message to the agent's stabilization computation
         self.post_msg(
-            target=f'DIGCA-{self.agent.name}',
+            target=self.agent.stabilization_comp.name,
             msg=msg,
             prio=MSG_ALGO,
         )

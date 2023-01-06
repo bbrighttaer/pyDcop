@@ -1,36 +1,45 @@
-from threading import Event, Thread
-from typing import Iterable, Dict
+import threading
+from queue import Queue
 
-from pydcop.computations_graph.dynamic_graph import DynamicComputationNode
-from pydcop.dcop.relations import Constraint
 from pydcop.infrastructure.agents import DynamicAgent
-from pydcop.infrastructure.communication import MSG_MGT
+from pydcop.infrastructure.communication import MSG_ALGO, MSG_MGT
 from pydcop.infrastructure.computations import MessagePassingComputation
+from pydcop.infrastructure.discovery import Discovery, BroadcastMessage
 from pydcop.infrastructure.message_types import message_type, GraphConnectionMessage
-from pydcop.infrastructure.discovery import Discovery
-from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_MGT
-from pydcop.stabilization import Neighbor, AgentID, MaxDegree
+from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_DIRECTORY, ORCHESTRATOR_MGT
+from pydcop.stabilization import Neighbor, transient_communication
 from pydcop.stabilization.base import DynamicGraphConstructionComputation
 
 NAME = 'DDFS'
 
-MaxDegreeRequest = message_type(
-    'max_degree_request',
-    fields=['agent_id'],
+Announce = message_type(
+    'announce',
+    fields=['agent_id', 'address', 'comps'],
 )
 
-MaxDegreeResponse = message_type(
-    'max_degree_response',
-    fields=['agent_id', 'max_degree'],
+NeighborDataRequest = message_type(
+    'neighbor_data_request',
+    fields=['agent_id', 'address'],
 )
 
-Affected = message_type(
-    'affected',
-    fields=['agent_id'],
+
+NeighborData = message_type(
+    'neighbor_data',
+    fields=['agent_id', 'num_neighbors'],
 )
 
-Configure = message_type(
-    'configure',
+PositionMsg = message_type(
+    'position_msg',
+    fields=['agent_id', 'position'],
+)
+
+ValueMsg = message_type(
+    'value_msg',
+    fields=['value'],
+)
+
+PseudoChildMsg = message_type(
+    'pseudo_child_msg',
     fields=['agent_id'],
 )
 
@@ -59,205 +68,209 @@ class DistributedDFS(DynamicGraphConstructionComputation):
     def __init__(self, name, agent: DynamicAgent, discovery: Discovery):
         super(DistributedDFS, self).__init__(name, agent, discovery)
 
-        self._registered_neighbors: Dict[AgentID, Neighbor] = {}
-        self._max_degree_register: Dict[AgentID, MaxDegree] = {}
+        self._neighbors = {}
+        self._num_neighbors_of_neighbor = {}
+        self._value_msg_senders = []
+        self._parents_level = {}
 
-        self._msg_handlers = {
-            'max_degree_request': self._on_max_degree_request,
-            'max_degree_response': self._on_max_degree_response,
-            # 'configure': self._on_configure,
-            # 'affected': self._on_affected,
-        }
+        self._max = 0
+        self._parents = []
+        self.pseudo_parents = []
+        self.pseudo_children = []
 
-        self._on_computation_added_cb = self._subscribe_to_neighbor_computations
-        self.num_acquaintances = 0
+        # props for handling paused msgs
+        self._paused_msgs_queue = Queue()
+        self._paused_msgs_thread = threading.Thread(target=self._paused_msg_handler, daemon=True)
 
-        self._shutdown = False
-        self._split_event = Event()
-        self._all_neighbor_max_degrees_event = Event()
-        self._execute_dcop_event = Event()
-        self.t = Thread(target=self._lambda_split, name=f'thread_{self.name}_bg_process')
-        self.t.daemon = True
+        self._msg_handlers.update({
+            'announce': self._receive_announce,
+            'neighbor_data': self._on_receive_neighbor_data,
+            # 'neighbor_data_response': self._on_receive_neighbor_data_response,
+            # 'position_msg': self._on_position_msg,
+            # 'value_msg': self._on_value_msg,
+            # 'pseudo_child_msg': self._on_pseudo_child_msg,
+        })
 
     def on_start(self):
         super(DistributedDFS, self).on_start()
-
         self.logger.debug(f'On start of {self.name}')
-        self.t.start()
+        self._paused_msgs_thread.start()
 
-    def _subscribe_to_neighbor_computations(self, computation: MessagePassingComputation):
-        self.logger.debug(f'Subscribing to neighbor computations of {computation.name}')
+    def _paused_msg_handler(self):
+        while True:
+            func, sender, msg = self._paused_msgs_queue.get()
+            # self.logger.debug(f'Paused msgs: calling {func} with args [sender={sender}, msg={msg}]')
+            func(sender, msg)
 
-        dynamic_node: DynamicComputationNode = computation.computation_def.node
-        var_constraints: Iterable[Constraint] = dynamic_node.var_constraints
-        self.num_acquaintances = len(var_constraints)
+    def connect(self):
+        self.logger.debug(f'{self.name} connect call')
 
-        for constraint in var_constraints:
-            self.logger.debug(f'constraint {constraint.name} scope = {constraint.scope_names}')
-            for comp_name in constraint.scope_names:
-                if comp_name != dynamic_node.name:
-                    self.discovery.subscribe_computation(
-                        computation=comp_name,
-                        cb=self._on_neighbor_computation_added_and_removed,
-                    )
-
-    def _on_neighbor_computation_added_and_removed(self, cb_type: str, computation: str, agent_name: str):
-        if cb_type == 'computation_added':
-            self.logger.debug(f'On neighbor computation added: {cb_type}, {computation}, {agent_name}')
-
-            # register corresponding DDFS computation of neighbor.
-            # since calling discovery.register_computation will trigger a circular call of this func,
-            # it is registered directly.
-            ddfs_comp = f'{NAME}-{agent_name}'
-            self.discovery._computations_data[ddfs_comp] = agent_name
-
-            self.neighbor_comps.append(ddfs_comp)
-            self.neighbor_comps.append(computation)
-
-            # update list of active neighbors
-            self._registered_neighbors[agent_name] = Neighbor(
-                agent_id=agent_name,
-                address=self.discovery.agent_address(agent_name),
-                computations=[ddfs_comp, computation]
-            )
-
-            # ask for this neighbor's max-degree
-            self.post_msg(
-                target=ddfs_comp,
-                msg=MaxDegreeRequest(agent_id=self.agent.name),
-            )
-        elif cb_type == 'computation_removed':
-            self.logger.debug(f'Removing neighbor computation {cb_type}, {computation}')
-            self._unregister_neighbor_comp(computation)
-
-        self._split_event.set()
-
-    def _unregister_neighbor_comp(self, computation: str):
-        agent = self.discovery.computation_agent(computation)
-        if agent in self._registered_neighbors:
-            self._registered_neighbors.pop(agent)
-
-        if computation in self.neighbor_comps:
-            self.neighbor_comps.remove(computation)
-            self.neighbor_comps.remove(f'{NAME}-{agent}')
-
-        self._split_event.set()
-
-    def _on_max_degree_request(self, sender: str, msg: MaxDegreeRequest):
+        # publish Announce msg
         self.post_msg(
-            target=sender,
-            msg=MaxDegreeResponse(
+            target=ORCHESTRATOR_DIRECTORY,
+            msg=BroadcastMessage(message=Announce(
                 agent_id=self.agent.name,
-                max_degree=self.num_acquaintances,
-            )
+                address=self.address,
+                comps=[c.name for c in self.agent.computations()]
+            ),
+                originator=self.name,
+                recipient_prefix=NAME
+            ),
+            prio=MSG_ALGO,
+            on_error='fail',
         )
 
-    def _on_max_degree_response(self, sender: str, msg: MaxDegreeResponse):
-        self._max_degree_register[msg.agent_id] = msg.max_degree
-        if len(self._max_degree_register) == len(self._registered_neighbors):
-            self._all_neighbor_max_degrees_event.set()
+    def _receive_announce(self, sender: str, msg: Announce):
+        self.logger.debug(f'Received announce msg from {sender}: {msg}')
 
-    def _lambda_split(self):
-        # monitor affected status
-        while self._split_event.wait():
-            if self._shutdown:
-                break
-
-            # wait for all available neighbors
-            self._all_neighbor_max_degrees_event.wait()
-
-            # split neighbors
-            self._split()
-
-            # set flags
-            self.logger.debug(f'Resetting lambda_split flags')
-            self._all_neighbor_max_degrees_event.clear()
-            self._split_event.clear()
-
-    def _split(self):
-        self.logger.debug('splitting neighbors')
-
-        parent = None
-        children = []
-        self.logger.debug(f'max-degree: {self._max_degree_register}')
-        for agt in self._registered_neighbors:
-            neighbor: Neighbor = self._registered_neighbors[agt]
-            if self._max_degree_register[agt] < self.num_acquaintances or (
-                    self._max_degree_register[agt] == self.num_acquaintances and neighbor.agent_id < self.agent.name
-            ):
-                children.append(neighbor)
-            else:
-                parent = neighbor
-        self.parent = parent
-        self.children = children
-        self.logger.debug(f'Parent = {self.parent}, children = {self.children}')
-
-        if children:
-            for child in children:
-                # report connection
-                self.post_msg(
-                    ORCHESTRATOR_MGT,
-                    GraphConnectionMessage(
-                        action='add',
-                        node1=self.agent.name,
-                        node2=child.agent_id,
-                    ),
-                    MSG_MGT
-                )
-
-        if parent:
-            self.post_msg(
-                ORCHESTRATOR_MGT,
-                GraphConnectionMessage(
-                    action='add',
-                    node1=parent.agent_id,
-                    node2=self.agent.name,
-                ),
-                MSG_MGT
+        # record neighbor information
+        if msg.agent_id not in self._neighbors:
+            self._neighbors[msg.agent_id] = Neighbor(
+                agent_id=msg.agent_id,
+                address=msg.address,
+                computations=msg.comps,
             )
 
-        # reconfigure properties for dcop computation
-        configured = False
-        for computation in self.computations:
-            self._configure(computation)
-            configured = True
-        if configured:
-            self.execute_computations(is_reconfiguration=True)
+            # if all neighbors have responded, request neighbor information
+            if len(self.agents_in_comm_range) == len(self._neighbors):
+                self.logger.debug(f'number of neighbors = {len(self._neighbors)}')
+                for agent_id in self._neighbors:
+                    dest_comp = f'{NAME}-{agent_id}'
+                    n = self._neighbors[agent_id]
+                    with transient_communication(self.discovery, dest_comp, n.agent_id, n.address):
+                        self.post_msg(
+                            target=dest_comp,
+                            msg=NeighborData(agent_id=self.agent.name, num_neighbors=len(self._neighbors)),
+                        )
+            else:
+                self._paused_msgs_queue.put((self._receive_announce, sender, msg))
+                self._neighbors.pop(msg.agent_id)
 
-    #    # reconfigure properties for dcop computation
-    #     configured = False
-    #     for computation in self.computations:
-    #         self._configure(computation)
-    #         configured = True
-    #     if configured:
-    #         self._pass_graph_changed_msg()
-    #
-    # def _pass_graph_changed_msg(self):
-    #     if self.parent:
-    #         self.logger.debug(f'Sending affected msg to parent {self.parent.agent_id}')
+    # def _on_receive_neighbor_data_request(self, sender: str, msg: NeighborDataRequest):
+    #     self.logger.debug(f'Received neighbor data request from {sender}: {msg}')
+    #     with transient_communication(self.discovery, sender, msg.agent_id, msg.address):
     #         self.post_msg(
-    #             target=f'{NAME}-{self.parent.agent_id}',
-    #             msg=Affected(
-    #                 agent_id=self.agent,
-    #             )
+    #             target=sender,
+    #             msg=NeighborDataResponse(num_neighbors=len(self._neighbors))
     #         )
-    #     elif self.children:
-    #         for child in self.children:
-    #             self.logger.debug(f'Sending configure msg to child {child.agent_id}')
-    #             self.post_msg(
-    #                 target=f'{NAME}-{child.agent_id}',
-    #                 msg=Configure(
-    #                     agent_id=self.agent.name,
-    #                 )
-    #             )
-    #
-    # def _on_affected(self, sender: str, msg: Affected):
-    #     self.logger.debug(f'Received affected msg from {sender}')
-    #     self._pass_graph_changed_msg()
-    #
-    #
-    # def _on_configure(self, sender: str, msg: Configure):
-    #     self.logger.debug(f'Received configure msg from {sender}')
-    #
-    #
-    #
+
+    def _on_receive_neighbor_data(self, sender: str, msg: NeighborData):
+        self.logger.debug(f'Received neighbor data from {sender}: {msg}')
+        self._num_neighbors_of_neighbor[msg.agent_id] = msg.num_neighbors
+
+        # perform max-degree splitting of neighbors
+        if len(self._neighbors) == len(self._num_neighbors_of_neighbor):
+            self.logger.debug('Splitting neighbors')
+            # self._split_neighbors()
+        else:
+            self._paused_msgs_queue.put((self._on_receive_neighbor_data, sender, msg))
+
+    def on_neighbor_removed(self, neighbor: Neighbor, *args, **kwargs):
+        self._neighbors.pop(neighbor.agent_id)
+
+    def _split_neighbors(self):
+        """
+        split neighbors into children and parents
+        """
+        # base class props
+        self.parent = None
+        self.children.clear()
+        self.pseudo_parents.clear()
+        self.pseudo_children.clear()
+
+        for agt, num_neighbors in self._num_neighbors_of_neighbor.items():
+            neighbor = self._neighbors[agt]
+
+            if num_neighbors < len(self._neighbors):
+                self.children.append(neighbor)
+            else:
+                self._parents.append(neighbor)
+
+        # if this agent is a leaf, begin level calculation for ordering parents
+        if len(self.children) == 0 and self._parents:
+            self._max += 1
+            for p in self._parents:
+                dest_comp = f'{NAME}-{p.agent_id}'
+                with transient_communication(self.discovery, dest_comp, p.agent_id, p.address):
+                    self.post_msg(
+                        target=dest_comp,
+                        msg=ValueMsg(value=self._max),
+                    )
+
+    def _register(self, neighbor: Neighbor):
+        # registration and configuration
+        self.register_neighbor(neighbor)
+
+        # report connection to graph UI
+        self.post_msg(
+            ORCHESTRATOR_MGT,
+            GraphConnectionMessage(
+                action='add',
+                node1=self.agent.name,
+                node2=neighbor.agent_id,
+            ),
+            MSG_MGT,
+        )
+
+    def _on_value_msg(self, sender: str, msg: ValueMsg):
+        self.logger.debug(f'Received value msg from {sender}: {msg}')
+        if sender not in self._value_msg_senders:
+            self._value_msg_senders.append(sender)
+
+            if self._max < msg.value:
+                self._max = msg.value
+
+            if len(self._value_msg_senders) == len(self.children):
+                self._max += 1
+                if self._parents:  # is not root
+                    for p in self._parents:
+                        dest_comp = f'{NAME}-{p.agent_id}'
+                        with transient_communication(self.discovery, dest_comp, p.agent_id, p.address):
+                            self.post_msg(
+                                target=dest_comp,
+                                msg=ValueMsg(value=self._max),
+                            )
+                else:  # is root
+                    for agt in self.children:
+                        dest_comp = f'{NAME}-{agt.agent_id}'
+                        with transient_communication(self.discovery, dest_comp, agt.agent_id, agt.address):
+                            self.post_msg(
+                                target=f'{NAME}-{agt.agent_id}',
+                                msg=PositionMsg(agent_id=self.agent.name, position=self._max),
+                            )
+
+                # --------------------------------------------------------------------- #
+                # reset properties used to established connection and variable ordering
+                # --------------------------------------------------------------------- #
+
+                self.agents_in_comm_range.clear()
+
+                # DDFS-specific props
+                self._neighbors.clear()
+                self._num_neighbors_of_neighbor.clear()
+                self._parents.clear()
+                self._value_msg_senders.clear()
+
+    def _on_position_msg(self, sender: str, msg: PositionMsg):
+        self.logger.debug(f'Received position msg from {sender}: {msg}')
+        self._parents_level[msg.agent_id] = msg.position
+
+        if len(self._parents_level) == len(self._parents):
+            parents = sorted(self._parents, key=lambda p: self._parents_level[p.agent_id])
+            self.parent = parents.pop(0)
+            self.pseudo_parents = parents
+
+            # send pseudo-child messages
+            for p in parents:
+                dest_comp = f'{NAME}-{p.agent_id}'
+                with transient_communication(self.discovery, dest_comp, p.agent_id, p.address):
+                    self.post_msg(
+                        target=f'{NAME}-{p.agent_id}',
+                        msg=PseudoChildMsg(agent_id=self.agent.name),
+                    )
+
+    def _on_pseudo_child_msg(self, sender: str, msg: PseudoChildMsg):
+        self.logger.debug(f'Received pseudo-child msg from {sender}')
+        self.pseudo_children.append(msg.agent_id)
+
+

@@ -532,7 +532,7 @@ class DynamicOrchestrator(Orchestrator):
     def _end_dynamic_simulation(self):
         self.scenario_complete_event.wait()
         self.logger.info('All Dynamic DCOP computation have finished : stop')
-        self.mgt._orchestrator_stop_agents()
+        # self.mgt._orchestrator_stop_agents()
         self.logger.info(f'Final graph: {self._current_graph.edges.data()}')
 
     def on_sim_env_time_step_changed(self):
