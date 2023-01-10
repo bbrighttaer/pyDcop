@@ -247,50 +247,54 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
             self._joined_utils = AsyncNAryMatrixRelation(self, [])
 
     def start_dcop(self):
-        if self.is_leaf and not self.is_root:
-            # If we are a leaf in the DFS Tree we can immediately compute
-            # our util and send it to our parent.
-            # Note: as a leaf, our separator is the union of our parents and
-            # pseudo-parents
-            util = self._compute_utils_msg()
-            self.logger.info(
-                f"Leaf {self._variable.name} init message {self._variable.name} -> {self._parent} : {util}"
-            )
-            msg = DpopMessage("UTIL", util)
-            self.post_msg(self._parent, msg)
-
-        elif self.is_leaf:
-            # we are both root and leaf : means we are an isolated variable we
-            #  can select our own value alone:
-            if self._constraints:
-                for r in self._constraints:
-                    self._joined_utils = async_rel_join(self,  self._joined_utils, r)
-
-                values, current_cost = find_arg_optimal(
-                    self._variable, self._joined_utils, self._mode
+        if self.current_value is None:
+            if self.is_leaf and not self.is_root:
+                # If we are a leaf in the DFS Tree we can immediately compute
+                # our util and send it to our parent.
+                # Note: as a leaf, our separator is the union of our parents and
+                # pseudo-parents
+                util = self._compute_utils_msg()
+                self.logger.info(
+                    f"Leaf {self._variable.name} init message {self._variable.name} -> {self._parent} : {util}"
                 )
+                msg = DpopMessage("UTIL", util)
+                self.post_msg(self._parent, msg)
 
-                self.select_value_and_finish(values[0], float(current_cost))
-            elif hasattr(self._variable, "cost_for_val"):
-                # The variable has no constraint with other variable but has a cost function,
-                # (i.e a unary constraint) : select the value that optimize that constraint.
+            elif self.is_leaf:
+                # we are both root and leaf : means we are an isolated variable we
+                #  can select our own value alone:
+                if self._constraints:
+                    for r in self._constraints:
+                        self._joined_utils = async_rel_join(self,  self._joined_utils, r)
 
-                self.logger.debug(
-                    f"Selecting value for {self._variable.name} based only on cost function"
-                )
-                values, current_cost = find_arg_optimal(
-                    self._variable, self._joined_utils, self._mode
-                )
-                self.select_value_and_finish(values[0], float(current_cost))
+                    values, current_cost = find_arg_optimal(
+                        self._variable, self._joined_utils, self._mode
+                    )
 
-            else:
-                # If the variable is not constrained, we can simply take a value at
-                # random:
-                self.logger.debug(
-                    f"Selecting random value for {self._variable.name} (not constrained)"
-                )
-                value = choice(self._variable.domain)
-                self.select_value_and_finish(value, 0.0)
+                    self.select_value_and_finish(values[0], float(current_cost))
+                elif hasattr(self._variable, "cost_for_val"):
+                    # The variable has no constraint with other variable but has a cost function,
+                    # (i.e a unary constraint) : select the value that optimize that constraint.
+
+                    self.logger.debug(
+                        f"Selecting value for {self._variable.name} based only on cost function"
+                    )
+                    values, current_cost = find_arg_optimal(
+                        self._variable, self._joined_utils, self._mode
+                    )
+                    self.select_value_and_finish(values[0], float(current_cost))
+
+                else:
+                    # If the variable is not constrained, we can simply take a value at
+                    # random:
+                    self.logger.debug(
+                        f"Selecting random value for {self._variable.name} (not constrained)"
+                    )
+                    value = choice(self._variable.domain)
+                    self.select_value_and_finish(value, 0.0)
+        else:
+            self.logger.warning(f'Received start DCOP call but value ({self.current_value}) '
+                                f'is already assigned. Ignoring call...')
 
     @register("dcop_initialization_message")
     def _on_dcop_initialization_message(self, sender: str, recv_msg, t: int):

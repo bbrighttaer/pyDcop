@@ -302,7 +302,9 @@ class GridWorld(SimulationEnvironment):
                 score = unique_cells[0].get_num_active_targets() * 2
 
             elif len(unique_cells) > 1:
-                score = selected_cells[sender.replace('var', 'a')].get_num_active_targets() * 0.5
+                score = 0
+                for cell in selected_cells.values():
+                    score += cell.get_num_active_targets() * 0.5
 
         # send constraint evaluation result to computation (sender)
         self.send_constraint_evaluation_response(

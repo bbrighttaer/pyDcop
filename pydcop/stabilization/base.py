@@ -33,6 +33,8 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
 
         self.parent: Union[Neighbor, None] = None
         self.children: List[Neighbor] = []
+        self.pseudo_parents: List[Neighbor] = []
+        self.pseudo_children: List[Neighbor] = []
         self.domain = []
         self.neighbor_domains = {}
         self.agents_in_comm_range = []
@@ -53,7 +55,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
 
     @property
     def neighbors(self) -> List[Neighbor]:
-        nodes = list(self.children)
+        nodes = self.children + self.pseudo_children + self.pseudo_parents
         if self.parent:
             nodes += [self.parent]
         return nodes
@@ -101,9 +103,15 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
             if self.parent == neighbor:
                 neighbor_type = 'parent'
                 self.parent = None
-            else:
+            elif neighbor in self.pseudo_parents:
+                neighbor_type = 'pseudo_parent'
+                self.pseudo_parents.remove(neighbor)
+            elif neighbor in self.children:
                 neighbor_type = 'child'
                 self.children.remove(neighbor)
+            elif neighbor in self.pseudo_children:
+                neighbor_type = 'pseudo_children'
+                self.pseudo_children.remove(neighbor)
 
             # fire callback
             if callback:
@@ -133,6 +141,8 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
 
         self.agents_in_comm_range = set(msg.data['agents_in_comm_range'])
 
+        prior_neighbors = set(self.neighbor_ids)
+
         # remove agents that are out of range
         self.inspect_connections(self.agents_in_comm_range)
 
@@ -140,8 +150,8 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         self.logger.debug('configure call in time step changed receiver')
         self.configure_dcop_computation()
 
-        prior_neighbors = set(self.neighbor_ids)
         is_affected = prior_neighbors != self.agents_in_comm_range
+        self.logger.debug(f'Prior={prior_neighbors}, in-range: {self.agents_in_comm_range}')
 
         if is_affected:
             self.logger.debug(f'Neighborhood change detected')
@@ -180,6 +190,8 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
                     msg=DcopConfigurationMessage(data={
                         'parent': self.parent,
                         'children': self.children,
+                        'pseudo_parents': self.pseudo_parents,
+                        'pseudo_children': self.pseudo_children,
                         'domain': self.domain,
                         'current_position': self.current_position,
                         'neighbor_domains': self.neighbor_domains,
@@ -208,7 +220,6 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
         self.logger.debug(f'Inspecting connections: {agents_in_comm_range}')
         for neighbor in self.neighbors:
             if neighbor.agent_id not in agents_in_comm_range:
-                self.logger.debug(f'Agent {neighbor.agent_id}')
                 self.unregister_neighbor(neighbor, callback=self.on_neighbor_removed)
 
     def on_neighbor_removed(self, neighbor: Neighbor, *args, **kwargs):
@@ -251,6 +262,8 @@ class DynamicDcopComputationMixin:
         # get msg components
         parent: Neighbor = recv_msg.data['parent']
         children: List[Neighbor] = recv_msg.data['children']
+        pseudo_children: List[Neighbor] = recv_msg.data['pseudo_children']
+        pseudo_parents: List[Neighbor] = recv_msg.data['pseudo_parents']
 
         # DCOP components
         variable = Variable(self.name, VariableDomain(self.name, self.name, recv_msg.data['domain']))
@@ -287,7 +300,14 @@ class DynamicDcopComputationMixin:
                         )
 
         elif dynamic_node.type == pseudotree.GRAPH_NODE_TYPE:
-            for i, n in enumerate(children):
+            all_links = pseudo_parents + children + pseudo_children
+            all_link_types = ['pseudo_parent'] * len(pseudo_parents) \
+                             + ['children'] * len(children) \
+                             + ['pseudo_children'] * len(pseudo_children)
+            if parent:
+                all_links.append(parent)
+                all_link_types.append('parent')
+            for i, (n, link_type) in enumerate(zip(all_links, all_link_types)):
                 for j, comp_name in enumerate(n.computations):
                     if 'var' in comp_name:
                         variables = [
@@ -300,25 +320,7 @@ class DynamicDcopComputationMixin:
                         constraints.append(constraint)
                         links.append(
                             PseudoTreeLink(
-                                link_type='children',
-                                source=self.name,
-                                target=comp_name,
-                            )
-                        )
-            if parent:
-                for i, comp_name in enumerate(parent.computations):
-                    if 'var' in comp_name:
-                        variables = [
-                            variable,
-                            Variable(comp_name, VariableDomain(
-                                comp_name, comp_name, neighbor_domains[comp_name.replace('var', 'a')]
-                            ))
-                        ]
-                        constraint = relation_class(self, variables, name=f'c-{self.name}-p{i}')
-                        constraints.append(constraint)
-                        links.append(
-                            PseudoTreeLink(
-                                link_type='parent',
+                                link_type=link_type,
                                 source=self.name,
                                 target=comp_name,
                             )

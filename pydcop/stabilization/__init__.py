@@ -1,15 +1,30 @@
 from collections import namedtuple
+from dataclasses import dataclass
+from typing import List
 
+from pydcop.infrastructure.communication import CommunicationLayer
 from pydcop.infrastructure.discovery import Discovery
 
-Neighbor = namedtuple(
-    'Neighbor',
-    field_names=['agent_id', 'address', 'computations'],
-)
+# Neighbor = namedtuple(
+#     'Neighbor',
+#     field_names=['agent_id', 'address', 'computations'],
+# )
+
+
 Seconds = int
 AgentID = str
 MaxDegree = int
 ComputationName = str
+
+
+@dataclass
+class Neighbor(object):
+    agent_id: str
+    address: CommunicationLayer
+    computations: List[str]
+
+    def __hash__(self):
+        return hash(self.agent_id)
 
 
 class transient_communication:
