@@ -25,3 +25,19 @@ events:
     agent: a0
 #- id: w3
 #  delay: 10
+- id: e4
+  actions:
+  - type: add_agent
+    agent: a3
+- id: e5
+  actions:
+  - type: add_agent
+    agent: a4
+#- id: e6
+#  actions:
+#  - type: add_agent
+#    agent: a5
+#- id: e7
+#  actions:
+#  - type: add_agent
+#    agent: a6

@@ -178,6 +178,7 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
         super().__init__(comp_def.node.variable, comp_def)
         self._mode = comp_def.algo.mode
         self._utils = {}
+        self._util_sent = False
 
     def footprint(self):
         return computation_memory(self.computation_def.node)
@@ -234,6 +235,8 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
             self._waited_children = list(self._children)
             self.logger.debug(f'waited children: {self._waited_children}')
 
+        self._util_sent = False
+
     def _set_join_utils(self):
         if hasattr(self._variable, "cost_for_val"):
             costs = []
@@ -259,7 +262,7 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
                 )
                 msg = DpopMessage("UTIL", util)
                 self.post_msg(self._parent, msg)
-
+                self._util_sent = True
             elif self.is_leaf:
                 # we are both root and leaf : means we are an isolated variable we
                 #  can select our own value alone:
@@ -393,7 +396,7 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
                 selected_value = values[0]
 
                 self.logger.info(
-                    f"ROOT: On UTIL from {variable_name}, send VALUE to childrens {self._children} "
+                    f"ROOT: On UTIL from {variable_name}, send VALUE to children {self._children} "
                 )
                 for c in self._children:
                     msg = DpopMessage("VALUE", ([self._variable], [selected_value]))
@@ -410,6 +413,7 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
                     f"On UTIL from {variable_name}, send UTIL to parent {self._parent} "
                 )
                 self.post_msg(self._parent, msg)
+                self._util_sent = True
         else:
             self.logger.debug(f'Waiting for UTIL msgs: waited children {self._waited_children}, '
                               f'children={self._children}')
@@ -430,14 +434,18 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
     def _on_util_request(self, variable_name, recv_msg, t) -> None:
         self.logger.debug(f'Received UTIL request from {variable_name}: {recv_msg}')
 
-        # if this child is a leaf or has no children to wait then send UTIL to parent
-        if self.is_leaf or len(self._waited_children) == 0:
-            self.logger.debug(f'Responding to UTIL request from {variable_name}')
-            util = self._compute_utils_msg()
-            msg = DpopMessage("UTIL", util)
-            self.post_msg(self._parent, msg)
-        elif len(self._waited_children) > 0:
-            self._send_util_request()
+        if self._util_sent:
+            self.logger.debug(f'UTIL msg already sent, ignoring UTIL request')
+        else:
+            # if this child is a leaf or has no children to wait then send UTIL to parent
+            if self.is_leaf or len(self._waited_children) == 0:
+                self.logger.debug(f'Responding to UTIL request from {variable_name}')
+                util = self._compute_utils_msg()
+                msg = DpopMessage("UTIL", util)
+                self.post_msg(self._parent, msg)
+                self._util_sent = True
+            elif len(self._waited_children) > 0:
+                self._send_util_request()
 
     def _compute_utils_msg(self):
         for r in self._constraints:

@@ -74,8 +74,9 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
             if hasattr(msg, 'agent_id'):
                 self.last_contact_time[msg.agent_id] = time.time()
             self._msg_handlers[msg.type](sender, msg)
-        except KeyError:
-            self.logger.error(f'Could not find function callback for msg type: {msg.type}')
+        except KeyError as e:
+            self.logger.error(f'Error handling msg type: {msg.type}: {str(e)} {self._neighbors} {self._num_neighbors_of_neighbor}')
+            raise
 
     def register_neighbor(self, neighbor: Neighbor, callback: Callable = None):
         for comp in neighbor.computations:
@@ -330,7 +331,7 @@ class DynamicDcopComputationMixin:
         dynamic_node.constraints = constraints or [relation_class(self, [variable], name=f'c-{self.name}')]
         dynamic_node.links = links
         dynamic_node.neighbors = list(set(n for l in links for n in l.nodes if n != dynamic_node.name))
-        self.logger.debug(f'constraints = {constraints}, links = {links}, neighbors = {dynamic_node.neighbors}')
+        # self.logger.debug(f'constraints = {constraints}, links = {links}, neighbors = {dynamic_node.neighbors}')
 
         # callback
         self.on_computation_node_configured_cb()

@@ -156,7 +156,7 @@ def run_cmd(args, timer=None, timeout=None):
     logger.info(f"loading dcop from {args.dcop_files}")
     dcop = load_dcop_from_file(args.dcop_files)
 
-    dcop = filter_dcop(dcop)
+    # dcop = filter_dcop(dcop)
 
     if args.distribution in DISTRIBUTION_METHODS:
         dist_module, algo_module, graph_module = _load_modules(
@@ -195,7 +195,7 @@ def run_cmd(args, timer=None, timeout=None):
 
     # D-DCOP environment setup
     simulation_environment = GridWorld(
-        size=2,
+        size=3,
         num_targets=2,
         scenario=scenario,
     )

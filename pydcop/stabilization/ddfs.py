@@ -101,8 +101,6 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         self.logger.debug(f'On start of {self.name}')
 
     def connect(self):
-        self._neighbors.clear()
-
         # publish Announce msg
         self.post_msg(
             target=ORCHESTRATOR_DIRECTORY,
@@ -168,7 +166,7 @@ class DistributedDFS(DynamicGraphConstructionComputation):
             self._split_neighbors()
 
     def on_neighbor_removed(self, neighbor: Neighbor, *args, **kwargs):
-        self._neighbors.pop(neighbor.agent_id)
+        ...
 
     def _split_neighbors(self):
         """
@@ -176,26 +174,32 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         """
         self.logger.debug('Splitting neighbors')
 
-        if 'DDFS-a2' == self.name:
-            pass
-
         # base class props
         self.parent = None
         self.children.clear()
         self.pseudo_parents.clear()
         self.pseudo_children.clear()
+        self._parents.clear()
+        self._children_temp.clear()
+
+        self.logger.debug(f'num_neighbors_of_neighbor: {self._num_neighbors_of_neighbor}')
+        self.logger.debug(f'Before splitting: children_temp={self._children_temp}, parents_temp={self._parents}')
 
         for agt, num_neighbors in self._num_neighbors_of_neighbor.items():
             neighbor = self._neighbors[agt]
 
-            if num_neighbors < len(self._neighbors) or self.agent.name < agt:
+            if num_neighbors < len(self._neighbors) \
+                    or (num_neighbors == len(self._neighbors) and self.agent.name < agt):
                 self._children_temp.append(neighbor)
             else:
                 self._parents.append(neighbor)
 
+        self.logger.debug(f'After splitting: children_temp={self._children_temp}, parents_temp={self._parents}')
+
         # if this agent is a leaf, begin level calculation for ordering parents
         if len(self._children_temp) == 0 and self._parents:
             self._max = 1
+
             for p in self._parents:
                 dest_comp = f'{NAME}-{p.agent_id}'
                 with transient_communication(self.discovery, dest_comp, p.agent_id, p.address):
@@ -227,7 +231,7 @@ class DistributedDFS(DynamicGraphConstructionComputation):
 
             if self._max < msg.value:
                 self._max = msg.value
-
+            self.logger.debug(f'received: {self._value_msg_senders}, ctemp: {self._children_temp}')
             if len(self._value_msg_senders) == len(self._children_temp):
                 self._max += 1
 
@@ -249,14 +253,11 @@ class DistributedDFS(DynamicGraphConstructionComputation):
                             msg=PositionMsg(agent_id=self.agent.name, position=self._max),
                         )
 
-                # since the root does not receive position msg, the process ends at value msgs, so we clear helper vars
-                if len(self._parents) == 0:
-                    self._clear_temp_connection_variables()
-
     def _clear_temp_connection_variables(self):
         """
         Reset properties used to established connection and variable ordering
         """
+        self._neighbors.clear()
         self.agents_in_comm_range.clear()
 
         # DDFS-specific props
@@ -310,11 +311,20 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         self._register(pseudo_child)
         self.logger.debug(f'Added {msg.agent_id} as pseudo-child')
 
+        self._clear_temp_vars_for_root()
+
+    def _clear_temp_vars_for_root(self):
+        if len(self._parents) == 0:
+            if len(self.pseudo_children + self.children) == len(self._children_temp):
+                self._clear_temp_connection_variables()
+
     def _on_child_msg(self, sender: str, msg: ChildMsg):
         self.logger.debug(f'Received child msg from {sender}')
         child = self._neighbors[msg.agent_id]
         self.children.append(child)
         self._register(child)
         self.logger.debug(f'Added {msg.agent_id} as child')
+
+        self._clear_temp_vars_for_root()
 
 

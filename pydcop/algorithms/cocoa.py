@@ -86,6 +86,9 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         self.beta = 1
         self.status = IDLE
 
+        # monitor if DCOP process has begun
+        self._dcop_started = False
+
         # keeps track of neighbors in HOLD state
         self.hold_state_history = []
 
@@ -104,8 +107,12 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
     def start_dcop(self, neighbor_triggered=False):
         # check if this computation can start
         parent = self.get_parent()
-        if (not parent or neighbor_triggered) and self.neighbors:  # root or called by a neighbor
-            self.logger.debug(f'root or neighbor triggered: {neighbor_triggered}')
+        if self._dcop_started:
+            self.logger.debug(f'DCOP process already started. Neighbor triggered: {neighbor_triggered}')
+        elif (not parent or neighbor_triggered) and self.neighbors:  # root or called by a neighbor
+            self.logger.debug(f'root: {not parent} or neighbor triggered: {neighbor_triggered}')
+            self._dcop_started = True
+
             # send inquiry messages
             msg = CoCoAMessage(CoCoAMessage.INQUIRY_MESSAGE, self.variable.domain.values)
             self.post_to_all_neighbors(msg, MSG_PRIORITY, on_error="fail")
@@ -336,7 +343,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
             d_vals = np.array(self.variable.domain.values)
             rho = d_vals[opt_indices].tolist()
         else:
-            max_val = delta._max()
+            max_val = delta.max()
             opt_indices = np.asarray(delta == max_val).nonzero()[0]
             d_vals = np.array(self.variable.domain.values)
             rho = d_vals[opt_indices].tolist()
@@ -358,6 +365,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
                 if idle_neighbors:
                     selected_neighbor = random.choice(list(idle_neighbors))
                     self.post_msg(selected_neighbor, CoCoAMessage(CoCoAMessage.UPDATE_STATE_MESSAGE, self.status))
+                    self._dcop_started = False
                 else:
                     self.select_value()
         else:

@@ -558,6 +558,7 @@ class DynamicOrchestrator(Orchestrator):
                 for comp in self.directory.discovery.computations():
                     agt = self.discovery.computation_agent(comp)
                     if agt in agents and comp.startswith(msg.recipient_prefix) and comp != msg.originator:
+                        self.logger.debug(f'Broadcasting Announce msg from {sender} to {comp}')
                         # send message
                         self.mgt.post_msg(
                             target=comp,

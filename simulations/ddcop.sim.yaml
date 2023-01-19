@@ -24,6 +24,14 @@ variables:
     domain: d1
   var2:
     domain: d2
+  var3:
+    domain: d1
+  var4:
+    domain: d1
+  var5:
+    domain: d1
+  var6:
+    domain: d1
 constraints:
   c0:
     type: intention
@@ -50,3 +58,11 @@ agents:
     id: '1'
   a2:
     id: '2'
+  a3:
+    id: '3'
+  a4:
+    id: '4'
+  a5:
+    id: '5'
+  a6:
+    id: '6'
