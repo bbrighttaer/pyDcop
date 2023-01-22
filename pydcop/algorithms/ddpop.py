@@ -199,6 +199,9 @@ class DDpopAlgo(VariableComputation, DynamicDcopComputationMixin):
 
         self._utils.clear()
 
+        # monitor if DCOP process has begun
+        self._dcop_started = False
+
     def on_computation_node_configured_cb(self):
         self._parent, self._pseudo_parents, self._children, self._pseudo_children = get_dfs_relations(
             self.computation_def.node

@@ -221,3 +221,7 @@ GraphConnectionMessage = message_type(
     'graph_connection',
     ['node1', 'node2', 'action']
 )
+
+SimTimeStepChangeMsgAck = message_type(
+    'sim_time_step_change_msg_ack', [],
+)

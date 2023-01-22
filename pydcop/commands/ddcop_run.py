@@ -195,7 +195,7 @@ def run_cmd(args, timer=None, timeout=None):
 
     # D-DCOP environment setup
     simulation_environment = GridWorld(
-        size=3,
+        size=2,
         num_targets=2,
         scenario=scenario,
     )

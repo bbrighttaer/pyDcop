@@ -56,9 +56,9 @@ from pydcop.infrastructure.agents import Agent, AgentException
 from pydcop.infrastructure.communication import CommunicationLayer, MSG_MGT, InProcessCommunicationLayer, \
     HttpCommunicationLayer
 from pydcop.infrastructure.computations import MessagePassingComputation
-from pydcop.infrastructure.discovery import Directory, UnknownAgent, BroadcastMessage
+from pydcop.infrastructure.discovery import Directory, UnknownAgent, BroadcastMessage, AsyncBroadcastMessage
 from pydcop.infrastructure.message_types import ConstraintEvaluationResponse, AgentMovedMessage, SimTimeStepChanged, \
-    message_type, Message, GraphConnectionMessage
+    message_type, Message, GraphConnectionMessage, SimTimeStepChangeMsgAck
 from pydcop.reparation.removal import _removal_candidate_agents, \
     _removal_orphaned_computations, _removal_candidate_agt_info
 
@@ -430,6 +430,8 @@ class DynamicOrchestrator(Orchestrator):
         if simulation_environment:
             self.directory.directory_computation.update_message_handlers({
                 'broadcast_message': self._on_broadcast_msg,
+                'async_broadcast_message': self._on_async_broadcast_msg,
+                'sim_time_step_change_msg_ack': self._on_sim_time_step_change_msg_ack,
             })
 
         self._sim_end_t = threading.Thread(target=self._end_dynamic_simulation, name='sim_end_monitor', daemon=True)
@@ -439,6 +441,11 @@ class DynamicOrchestrator(Orchestrator):
             self._current_graph = nx.DiGraph()
         else:
             self._current_graph = nx.Graph()
+
+        # props for managing async broadcast
+        self._async_senders = []
+        self._async_broadcast_msg_queue = Queue()
+        self._async_broadcast_msgs_t = threading.Thread(target=self._send_async_broadcast_msgs, daemon=True)
 
     def start(self):
         super(DynamicOrchestrator, self).start()
@@ -453,6 +460,9 @@ class DynamicOrchestrator(Orchestrator):
 
         # monitor end of simulation
         self._sim_end_t.start()
+
+        # monitor for async broadcast message forwarding
+        self._async_broadcast_msgs_t.start()
 
     def start_replication(self, k_target: int):
         self.logger.warning(f"Replication is not supported by {self.__class__.__name__}")
@@ -536,6 +546,11 @@ class DynamicOrchestrator(Orchestrator):
         self.logger.info(f'Final graph: {self._current_graph.edges.data()}')
 
     def on_sim_env_time_step_changed(self):
+        self._async_senders.clear()
+        # clear async broadcast queue
+        with self._async_broadcast_msg_queue.mutex:
+            self._async_broadcast_msg_queue.queue.clear()
+
         self.mgt._current_cycle += 1
         self.mgt.copy_current_graph()
         for agent in self.directory.agents_data:
@@ -574,6 +589,38 @@ class DynamicOrchestrator(Orchestrator):
                         msg=msg.message,
                         prio=0,
                     )
+
+    def _on_async_broadcast_msg(self, sender, msg: AsyncBroadcastMessage):
+        """
+        Similar to normal broadcast message but can also be sent to a neighbor that joins late.
+        The registers used to enable this feature are cleared for each time step of the dynamic environment.
+        """
+        self.logger.debug(f'Received async broadcast message: {msg} from {sender}')
+        agent_id = self.discovery.computation_agent(sender)
+        agents = self.simulation_environment.get_agents_in_communication_range(agent_id)
+
+        for comp in self.directory.discovery.computations():
+            agt = self.discovery.computation_agent(comp)
+            if agt in agents and comp.startswith(msg.recipient_prefix) and comp != msg.originator:
+                self._async_broadcast_msg_queue.put((comp, msg, sender))
+
+    def _on_sim_time_step_change_msg_ack(self, sender, msg):
+        self.logger.debug(f'Received time step changed ack from {sender}')
+        self._async_senders.append(sender)
+
+    def _send_async_broadcast_msgs(self):
+        while True:
+            comp, msg, sender = self._async_broadcast_msg_queue.get()
+            if comp in self._async_senders:
+                self.logger.debug(f'Broadcasting async announce msg from {sender} to {comp}')
+                # send message
+                self.mgt.post_msg(
+                    target=comp,
+                    msg=msg.message,
+                    on_error='fail'
+                )
+            else:
+                self._async_broadcast_msg_queue.put((comp, msg, sender))
 
     def send_sim_env_constraint_evaluation_response(self, target, constraint_name, value):
         self.mgt.post_msg(

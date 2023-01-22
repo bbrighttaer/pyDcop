@@ -1,13 +1,8 @@
-import sys
-import threading
-import time
-from queue import Queue, Empty
-
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.communication import MSG_ALGO, MSG_MGT
 from pydcop.infrastructure.computations import MessagePassingComputation
-from pydcop.infrastructure.discovery import Discovery, BroadcastMessage
-from pydcop.infrastructure.message_types import message_type, GraphConnectionMessage
+from pydcop.infrastructure.discovery import Discovery, AsyncBroadcastMessage
+from pydcop.infrastructure.message_types import message_type, GraphConnectionMessage, SimTimeStepChangeMsgAck
 from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_DIRECTORY, ORCHESTRATOR_MGT
 from pydcop.stabilization import Neighbor, transient_communication
 from pydcop.stabilization.base import DynamicGraphConstructionComputation
@@ -85,7 +80,7 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         self._parents = []
 
         # props for handling paused msgs
-        self._paused_ann_msgs_queue = Queue()
+        # self._paused_ann_msgs_queue = Queue()
 
         self._msg_handlers.update({
             'announce': self._receive_announce,
@@ -101,10 +96,11 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         self.logger.debug(f'On start of {self.name}')
 
     def connect(self):
+        self.logger.debug('Connecting...')
         # publish Announce msg
         self.post_msg(
             target=ORCHESTRATOR_DIRECTORY,
-            msg=BroadcastMessage(message=Announce(
+            msg=AsyncBroadcastMessage(message=Announce(
                 agent_id=self.agent.name,
                 address=self.address,
                 comps=[c.name for c in self.agent.computations()]
@@ -132,20 +128,6 @@ class DistributedDFS(DynamicGraphConstructionComputation):
                         comps=[c.name for c in self.agent.computations()],
                     ),
                 )
-        else:
-            self.logger.debug(f'putting announce msg on queue: {msg}')
-            self._paused_ann_msgs_queue.put((sender, msg))
-
-    def receive_sim_step_changed(self, sender: str, msg):
-        super(DistributedDFS, self).receive_sim_step_changed(sender, msg)
-
-        # if there are any pending announce msgs process them
-        while True:
-            try:
-                sender, msg = self._paused_ann_msgs_queue.get_nowait()
-                self._receive_announce(sender, msg)
-            except Empty:
-                break
 
     def _on_receive_neighbor_data(self, sender: str, msg: NeighborData):
         """
@@ -183,7 +165,6 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         self._children_temp.clear()
 
         self.logger.debug(f'num_neighbors_of_neighbor: {self._num_neighbors_of_neighbor}')
-        self.logger.debug(f'Before splitting: children_temp={self._children_temp}, parents_temp={self._parents}')
 
         for agt, num_neighbors in self._num_neighbors_of_neighbor.items():
             neighbor = self._neighbors[agt]
@@ -301,22 +282,12 @@ class DistributedDFS(DynamicGraphConstructionComputation):
             if len(self._children_temp) == 0:
                 self.execute_computations(exec_order='child-call')
 
-            # clear variables used to facilitate DDFS, so they can be reused in next time step
-            self._clear_temp_connection_variables()
-
     def _on_pseudo_child_msg(self, sender: str, msg: PseudoChildMsg):
         self.logger.debug(f'Received pseudo-child msg from {sender}')
         pseudo_child = self._neighbors[msg.agent_id]
         self.pseudo_children.append(pseudo_child)
         self._register(pseudo_child)
         self.logger.debug(f'Added {msg.agent_id} as pseudo-child')
-
-        self._clear_temp_vars_for_root()
-
-    def _clear_temp_vars_for_root(self):
-        if len(self._parents) == 0:
-            if len(self.pseudo_children + self.children) == len(self._children_temp):
-                self._clear_temp_connection_variables()
 
     def _on_child_msg(self, sender: str, msg: ChildMsg):
         self.logger.debug(f'Received child msg from {sender}')
@@ -325,6 +296,61 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         self._register(child)
         self.logger.debug(f'Added {msg.agent_id} as child')
 
-        self._clear_temp_vars_for_root()
+    def receive_sim_step_changed(self, sender: str, msg):
+        """
+        Handles simulation time step changed events.
 
+        Parameters
+        ----------
+        sender
+        msg
+
+        Returns
+        -------
+
+        """
+        # clear variables used to facilitate DDFS, so they can be reused in next time step
+        self._clear_temp_connection_variables()
+
+        self.logger.info(f'Received simulation time step changed: {msg}')
+        self.domain = msg.data['agent_domain']
+        self.current_position = msg.data['current_position']
+        self.neighbor_domains = msg.data['neighbor_domains']
+
+        # initialize dcop algorithm
+        self.initialize_computations()
+
+        self.agents_in_comm_range = set(msg.data['agents_in_comm_range'])
+        self.post_msg(
+            target=ORCHESTRATOR_DIRECTORY,
+            msg=SimTimeStepChangeMsgAck(),
+        )
+
+        prior_neighbors = set(self.neighbor_ids)
+
+        # remove agents that are out of range
+        self.inspect_connections(self.agents_in_comm_range)
+
+        # configuration
+        self.logger.debug('configure call in time step changed receiver')
+        self.configure_dcop_computation()
+
+        is_affected = prior_neighbors != self.agents_in_comm_range
+        self.logger.debug(f'Prior={prior_neighbors}, in-range: {self.agents_in_comm_range}')
+
+        if is_affected:
+            self.logger.debug(f'Neighborhood change detected')
+            # broadcast connection request
+            self.connect()
+        else:
+            self.logger.debug('No neighborhood change detected')
+            self.execute_computations(exec_order='no-new-neighbor')
+
+        # if there are any pending announce msgs process them
+        # while True:
+        #     try:
+        #         sender, msg = self._paused_ann_msgs_queue.get_nowait()
+        #         self._receive_announce(sender, msg)
+        #     except Empty:
+        #         break
 

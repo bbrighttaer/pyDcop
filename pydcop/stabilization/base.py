@@ -119,48 +119,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
                 callback(neighbor=neighbor, neighbor_type=neighbor_type)
 
     def receive_sim_step_changed(self, sender: str, msg: SimTimeStepChanged):
-        """
-        Handles simulation time step changed events.
-
-        Parameters
-        ----------
-        sender
-        msg
-
-        Returns
-        -------
-
-        """
-
-        self.logger.info(f'Received simulation time step changed: {msg}')
-        self.domain = msg.data['agent_domain']
-        self.current_position = msg.data['current_position']
-        self.neighbor_domains = msg.data['neighbor_domains']
-
-        # initialize dcop algorithm
-        self.initialize_computations()
-
-        self.agents_in_comm_range = set(msg.data['agents_in_comm_range'])
-
-        prior_neighbors = set(self.neighbor_ids)
-
-        # remove agents that are out of range
-        self.inspect_connections(self.agents_in_comm_range)
-
-        # configuration
-        self.logger.debug('configure call in time step changed receiver')
-        self.configure_dcop_computation()
-
-        is_affected = prior_neighbors != self.agents_in_comm_range
-        self.logger.debug(f'Prior={prior_neighbors}, in-range: {self.agents_in_comm_range}')
-
-        if is_affected:
-            self.logger.debug(f'Neighborhood change detected')
-            # broadcast connection request
-            self.connect()
-        else:
-            self.logger.debug('No neighborhood change detected')
-            self.execute_computations(exec_order='no-new-neighbor')
+        pass
 
     def initialize_computations(self):
         # send DCOP initialization message

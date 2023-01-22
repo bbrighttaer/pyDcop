@@ -121,6 +121,10 @@ BroadcastMessage = message_type(
     'broadcast_message', ['message', 'originator', 'recipient_prefix']
 )
 
+AsyncBroadcastMessage = message_type(
+    'async_broadcast_message', ['message', 'originator', 'recipient_prefix']
+)
+
 
 class DirectoryComputation(MessagePassingComputation):
     """
