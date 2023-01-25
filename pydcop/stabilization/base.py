@@ -222,8 +222,8 @@ class DynamicDcopComputationMixin:
         # get msg components
         parent: Neighbor = recv_msg.data['parent']
         children: List[Neighbor] = recv_msg.data['children']
-        pseudo_children: List[Neighbor] = recv_msg.data['pseudo_children']
-        pseudo_parents: List[Neighbor] = recv_msg.data['pseudo_parents']
+        pseudo_children: List[Neighbor] = []  # recv_msg.data['pseudo_children']
+        pseudo_parents: List[Neighbor] = []  # recv_msg.data['pseudo_parents']
 
         # DCOP components
         variable = Variable(self.name, VariableDomain(self.name, self.name, recv_msg.data['domain']))

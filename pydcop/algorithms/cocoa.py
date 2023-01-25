@@ -39,6 +39,7 @@ class CoCoAMessage(Message):
     COST_MESSAGE = "CostMessage"
     UPDATE_STATE_MESSAGE = "UpdateStateMessage"
     START_DCOP_MESSAGE = "StartDCOP"
+    FORWARDED_DCOP_EXECUTION = 'ForwardedDCOPExecution'
 
     def __init__(self, msg_type, content):
         super(CoCoAMessage, self).__init__(msg_type, content)
@@ -47,7 +48,7 @@ class CoCoAMessage(Message):
     def size(self):
         if self.type == self.INQUIRY_MESSAGE:
             return len(self.content)
-        if self.type in [self.START_DCOP_MESSAGE, self.UPDATE_STATE_MESSAGE]:
+        if self.type in [self.START_DCOP_MESSAGE, self.UPDATE_STATE_MESSAGE, self.FORWARDED_DCOP_EXECUTION]:
             return 1
         else:
             # COST_MESSAGE
@@ -109,7 +110,8 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         parent = self.get_parent()
         if self._dcop_started:
             self.logger.debug(f'DCOP process already started. Neighbor triggered: {neighbor_triggered}')
-        elif (not parent or neighbor_triggered) and self.neighbors:  # root or called by a neighbor
+
+        elif neighbor_triggered:  # called by a neighbor
             self.logger.debug(f'root: {not parent} or neighbor triggered: {neighbor_triggered}')
             self._dcop_started = True
 
@@ -121,7 +123,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
             self.logger.debug('forwarding to parent')
             self.post_msg(
                 target=parent,
-                msg=CoCoAMessage(CoCoAMessage.START_DCOP_MESSAGE, 'forwarded'),
+                msg=CoCoAMessage(CoCoAMessage.FORWARDED_DCOP_EXECUTION, 'forwarded'),
             )
 
         elif len(self.neighbors) == 0 and self.current_value is None:  # isolated agent
@@ -161,6 +163,26 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
     @register('agent_moved')
     def _on_agent_moved_msg(self, sender: str, recv_msg, t: int):
         super()._on_agent_moved_msg(sender, recv_msg, t)
+
+    @register(CoCoAMessage.FORWARDED_DCOP_EXECUTION)
+    def _on_forwarded_dcop_execution_message(self, sender, msg, t):
+        self.logger.debug(f'Received forwarded message from {sender}')
+        parent = self.get_parent()
+        if parent:  # if parent is available, relay execution call to parent
+            self.logger.debug('forwarding to parent')
+            self.post_msg(
+                target=parent,
+                msg=CoCoAMessage(CoCoAMessage.FORWARDED_DCOP_EXECUTION, 'forwarded'),
+            )
+        elif self._dcop_started:
+            self.logger.debug(f'DCOP process already started. Forwarded exec from {sender}')
+        else:
+            self.logger.debug('Starting DCOP execution')
+            self._dcop_started = True
+
+            # send inquiry messages
+            msg = CoCoAMessage(CoCoAMessage.INQUIRY_MESSAGE, self.variable.domain.values)
+            self.post_to_all_neighbors(msg, MSG_PRIORITY, on_error="fail")
 
     @register(CoCoAMessage.INQUIRY_MESSAGE)
     def _on_inquiry_message(self, variable_name: str, recv_msg: CoCoAMessage, t: int):
@@ -419,7 +441,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         self.logger.debug("Selecting neighbor to start")
         available_neighbors = set(self.neighbors) - set(self.done_state_history)
         for neighbor in available_neighbors:
-            self.logger.debug(f"Neighbor {neighbor} selected to start")
+            self.logger.debug(f"Starting neighbor {neighbor}")
             self.post_msg(neighbor, CoCoAMessage(CoCoAMessage.START_DCOP_MESSAGE, None), on_error="fail")
 
         if self.computation_def.exec_mode != 'dynamic':
