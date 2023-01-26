@@ -441,7 +441,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         self.logger.debug("Selecting neighbor to start")
         available_neighbors = set(self.neighbors) - set(self.done_state_history)
         for neighbor in available_neighbors:
-            self.logger.debug(f"Starting neighbor {neighbor}")
+            self.logger.debug(f"Sending start-DCOP msg to neighbor {neighbor}")
             self.post_msg(neighbor, CoCoAMessage(CoCoAMessage.START_DCOP_MESSAGE, None), on_error="fail")
 
         if self.computation_def.exec_mode != 'dynamic':
