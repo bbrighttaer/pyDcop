@@ -7,8 +7,6 @@ from pydcop.infrastructure.orchestratedagents import ORCHESTRATOR_DIRECTORY, ORC
 from pydcop.stabilization import Neighbor, transient_communication
 from pydcop.stabilization.base import DynamicGraphConstructionComputation
 
-NAME = 'DDFS'
-
 Announce = message_type(
     'announce',
     fields=['agent_id', 'address', 'comps'],
@@ -59,13 +57,15 @@ def build_stabilization_computation(agent: DynamicAgent, discovery: Discovery) -
     -------
     A computation object to dynamically construct a local interaction graph for the agent.
     """
-    return DistributedDFS(NAME, agent, discovery)
+    return DistributedDFS(DistributedDFS.NAME, agent, discovery)
 
 
 class DistributedDFS(DynamicGraphConstructionComputation):
     """
     Implementation of the DDFS algorithm for dynamic DCOP
     """
+
+    NAME = 'DDFS'
 
     def __init__(self, name, agent: DynamicAgent, discovery: Discovery):
         super(DistributedDFS, self).__init__(name, agent, discovery)
@@ -106,7 +106,7 @@ class DistributedDFS(DynamicGraphConstructionComputation):
                 comps=[c.name for c in self.agent.computations()]
             ),
                 originator=self.name,
-                recipient_prefix=NAME
+                recipient_prefix=self.NAME
             ),
             prio=MSG_ALGO,
             on_error='fail',
@@ -117,7 +117,7 @@ class DistributedDFS(DynamicGraphConstructionComputation):
 
         # if all neighbors have responded, request neighbor information
         if self.agents_in_comm_range:
-            dest_comp = f'{NAME}-{msg.agent_id}'
+            dest_comp = f'{self.NAME}-{msg.agent_id}'
             with transient_communication(self.discovery, dest_comp, msg.agent_id, msg.address):
                 self.post_msg(
                     target=dest_comp,
@@ -182,7 +182,7 @@ class DistributedDFS(DynamicGraphConstructionComputation):
             self._max = 1
 
             for p in self._parents:
-                dest_comp = f'{NAME}-{p.agent_id}'
+                dest_comp = f'{self.NAME}-{p.agent_id}'
                 with transient_communication(self.discovery, dest_comp, p.agent_id, p.address):
                     self.post_msg(
                         target=dest_comp,
@@ -218,7 +218,7 @@ class DistributedDFS(DynamicGraphConstructionComputation):
 
                 # send max value info to ancestors
                 for p in self._parents:
-                    dest_comp = f'{NAME}-{p.agent_id}'
+                    dest_comp = f'{self.NAME}-{p.agent_id}'
                     with transient_communication(self.discovery, dest_comp, p.agent_id, p.address):
                         self.post_msg(
                             target=dest_comp,
@@ -227,10 +227,10 @@ class DistributedDFS(DynamicGraphConstructionComputation):
 
                 # send position to descendants
                 for agt in self._children_temp:
-                    dest_comp = f'{NAME}-{agt.agent_id}'
+                    dest_comp = f'{self.NAME}-{agt.agent_id}'
                     with transient_communication(self.discovery, dest_comp, agt.agent_id, agt.address):
                         self.post_msg(
-                            target=f'{NAME}-{agt.agent_id}',
+                            target=f'{self.NAME}-{agt.agent_id}',
                             msg=PositionMsg(agent_id=self.agent.name, position=self._max),
                         )
 
@@ -259,7 +259,7 @@ class DistributedDFS(DynamicGraphConstructionComputation):
             self.pseudo_parents = parents
 
             # send child msg to parent
-            dest_comp = f'{NAME}-{self.parent.agent_id}'
+            dest_comp = f'{self.NAME}-{self.parent.agent_id}'
             with transient_communication(self.discovery, dest_comp, self.parent.agent_id, self.parent.address):
                 self.post_msg(
                     target=dest_comp,
@@ -271,10 +271,10 @@ class DistributedDFS(DynamicGraphConstructionComputation):
             # send pseudo-child messages
             for p in parents:
                 self.logger.debug(f'Added {p.agent_id} as pseudo-parent')
-                dest_comp = f'{NAME}-{p.agent_id}'
+                dest_comp = f'{self.NAME}-{p.agent_id}'
                 with transient_communication(self.discovery, dest_comp, p.agent_id, p.address):
                     self.post_msg(
-                        target=f'{NAME}-{p.agent_id}',
+                        target=f'{self.NAME}-{p.agent_id}',
                         msg=PseudoChildMsg(agent_id=self.agent.name),
                     )
                 self._register(self._neighbors[p.agent_id], update_graph=False)
