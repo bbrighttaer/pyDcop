@@ -612,7 +612,7 @@ class DynamicOrchestrator(Orchestrator):
         while True:
             comp, msg, sender = self._async_broadcast_msg_queue.get()
             if comp in self._async_senders:
-                self.logger.debug(f'Broadcasting async announce msg from {sender} to {comp}')
+                self.logger.debug(f'Broadcasting async msg from {sender} to {comp}')
                 # send message
                 self.mgt.post_msg(
                     target=comp,
