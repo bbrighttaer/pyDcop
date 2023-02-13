@@ -35,7 +35,7 @@ class GridCell:
     def get_num_active_targets(self):
         num = 0
         for c in self.contents:
-            if isinstance(c, Target): # and c.is_active:
+            if isinstance(c, Target) and c.is_active:
                 num += 1
         return num
 
@@ -105,6 +105,7 @@ class Target:
         self.current_cell = cell
         self.coverage_requirement = cov_req
         self.is_active = True
+        self.is_detected = False
 
     def __str__(self):
         return f'Target(target_id={self.target_id}, cov_req={self.coverage_requirement}, is_active={self.is_active})'
@@ -118,6 +119,7 @@ class GridWorld(SimulationEnvironment):
 
     def __init__(self, size, num_targets, scenario=None):
         super(GridWorld, self).__init__(self.name, time_step_delay=10, scenario=scenario)
+        self._delayed_actions_list = []
         self.grid_size = size
         self.grid = {}
         self._current_time_step = -1
@@ -165,8 +167,6 @@ class GridWorld(SimulationEnvironment):
 
     def step(self):
         try:
-            self.logger.debug(self.history)
-
             evt = next(self._events_iterator)
             if not evt.is_delay:
                 for a in evt.actions:
@@ -178,9 +178,8 @@ class GridWorld(SimulationEnvironment):
                         self.logger.info('Event action: Remove agent %s ', a)
                         self.remove_agent(a.args['agent'])
 
-            # wait for a while before signaling agents
-            # time.sleep(.1)
             self.next_time_step()
+            self.logger.debug(self.history)
         except StopIteration:
             self.on_simulation_ended()
 
@@ -208,6 +207,7 @@ class GridWorld(SimulationEnvironment):
         cell.contents.pop(cell.contents.index(msa))
 
     def next_time_step(self):
+        self._disable_detected_targets()
         self._current_time_step += 1
         grid = [str(v) for v in self.grid.values()]
         self._state_history.append((f't={str(self._current_time_step)}', grid))
@@ -299,13 +299,19 @@ class GridWorld(SimulationEnvironment):
             unique_cells = list(set(selected_cells.values()))
 
             if len(unique_cells) == 1:
+                self.logger.debug('unique cells')
                 score = unique_cells[0].get_num_active_targets() * 2
 
             elif len(unique_cells) > 1:
+                self.logger.debug('multiple cells')
                 score = 0
                 for cell in selected_cells.values():
                     score += cell.get_num_active_targets() * 0.5
 
+        elif len(selected_cells) == 1:
+            self.logger.debug('single cell')
+            score = list(selected_cells.values())[0].get_num_active_targets() * 0.5
+        self.logger.debug(f'score = {score}')
         # send constraint evaluation result to computation (sender)
         self.send_constraint_evaluation_response(
             target=sender,
@@ -315,31 +321,43 @@ class GridWorld(SimulationEnvironment):
 
     def on_action_selection(self, on_action_cb, sender: str, msg, t: float):
         self.logger.info(f'Received action selection from {sender}: {msg}')
+        self._delayed_actions_list.append((sender, msg.agent, msg.value, on_action_cb))
 
+    def _apply_selected_action(self, sender, agent, value, on_action_cb):
         # apply action
-        agt = self.agents[msg.agent]
+        agt = self.agents[agent]
         current_agt_cell = agt.current_cell
-        action = getattr(current_agt_cell, msg.value)
+        action = getattr(current_agt_cell, value)
         if action is not None:
             new_cell = self.grid.get(action(), None)
             if new_cell:
                 current_agt_cell.contents.remove(agt)
                 agt.current_cell = new_cell
                 new_cell.contents.append(agt)
-                self.logger.debug(f'Agent {msg.agent} changed from {current_agt_cell.cell_id} to {new_cell.cell_id}')
+                self.logger.debug(f'Agent {agent} changed from {current_agt_cell.cell_id} to {new_cell.cell_id}')
 
                 if callable(on_action_cb):
                     on_action_cb(
                         target=sender,
                         prev_position=current_agt_cell.cell_id,
                         new_position=new_cell.cell_id,
+                        updated_domain=self._get_legit_actions(new_cell),
+                        current_position=new_cell.cell_id,
                     )
 
     def calculate_global_score(self) -> Tuple[int, float]:  # number of violations, score
+        self.logger.debug('Calculating global score')
+
+        # apply all actions
+        self.logger.info(f'Applying actions: num of actions = {len(self._delayed_actions_list)}')
+        for sender, agent, value, on_action_cb in self._delayed_actions_list:
+            self._apply_selected_action(sender, agent, value, on_action_cb)
+        self._delayed_actions_list.clear()
+
         score = 0.
         for agt in self.agents:
             score += self.calc_agent_score(self.agents[agt])
-        self._disable_detected_targets()
+        self._mark_detected_targets()
         return 0, score
 
     def calc_agent_score(self, agent: MobileSensingAgent):
@@ -355,13 +373,18 @@ class GridWorld(SimulationEnvironment):
         return score
 
     def _disable_detected_targets(self):
+        for agt in self.agents:
+            for c in self.agents[agt].current_cell.contents:
+                if isinstance(c, Target) and c.is_detected:
+                    c.is_active = False
+
+    def _mark_detected_targets(self):
         """
         To be called after computing scores of all agents.
         """
         for agt in self.agents:
             for c in self.agents[agt].current_cell.contents:
                 if isinstance(c, Target):
-                    c.is_active = False
-
+                    c.is_detected = True
 
 

@@ -225,6 +225,9 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
             var2 = variables[0]
             # var1.domain.values = recv_msg.content
 
+        if variable_name == 'var1':
+            print('...')
+
         # Calculate the costs
         cost_map = np.zeros(constraint.shape)
         if self.current_value:
@@ -284,7 +287,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         self.cost_msgs[variable_name] = recv_msg.content
 
         # check if all neighbors have responded to cost inquiries
-        self.logger.debug(f'{self.neighbors}, {self.cost_msgs}, {self.computation_def.exec_mode}')
+        # self.logger.debug(f'{self.neighbors}, {self.cost_msgs}, {self.computation_def.exec_mode}')
         if len(self.neighbors) == len(self.cost_msgs):
             try:
                 self.select_value()

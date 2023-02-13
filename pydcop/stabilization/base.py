@@ -311,6 +311,11 @@ class DynamicDcopComputationMixin:
     def _on_agent_moved_msg(self, sender: str, recv_msg: AgentMovedMessage, t: int):
         self.position_history.append(f'from {recv_msg.prev_position} to {recv_msg.new_position}')
 
+        # update domain of variable
+        # self.variable.domain.values = recv_msg.updated_domain
+        # self.__value__ = recv_msg.current_position
+        # self.logger.info('Updated domain and current value')
+
 
 def get_relation_class(algo_name):
     """

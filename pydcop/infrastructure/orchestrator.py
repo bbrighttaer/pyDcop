@@ -542,10 +542,11 @@ class DynamicOrchestrator(Orchestrator):
     def _end_dynamic_simulation(self):
         self.scenario_complete_event.wait()
         self.logger.info('All Dynamic DCOP computation have finished : stop')
-        # self.mgt._orchestrator_stop_agents()
+        self.mgt._orchestrator_stop_agents()
         self.logger.info(f'Final graph: {self._current_graph.edges.data()}')
 
     def on_sim_env_time_step_changed(self):
+        self._collect_metrics()
         self._async_senders.clear()
         # clear async broadcast queue
         with self._async_broadcast_msg_queue.mutex:
@@ -561,6 +562,10 @@ class DynamicOrchestrator(Orchestrator):
                         self.simulation_environment.get_time_step_end_data(agent)
                     )
                 )
+
+    def _collect_metrics(self):
+        t = perf_counter()
+        self.mgt._emit_metrics(t, status='TIMESTEP')
 
     def _on_broadcast_msg(self, sender, msg: BroadcastMessage):
         """
@@ -638,6 +643,8 @@ class DynamicOrchestrator(Orchestrator):
                 msg=AgentMovedMessage(
                     prev_position=kwargs['prev_position'],
                     new_position=kwargs['new_position'],
+                    updated_domain=kwargs['updated_domain'],
+                    current_position=kwargs['current_position'],
                 ),
             )
 
@@ -1101,7 +1108,7 @@ class AgentsMgt(MessagePassingComputation):
 
                 self._agt_cycle_metrics[self._current_cycle][msg.agent] = \
                     msg.metrics
-                self._emit_metrics(t)
+                # self._emit_metrics(t)
 
     def _on_cycle_change_msg(self, sender: str, msg: CycleChangeMessage,
                              t: float):
@@ -1550,9 +1557,9 @@ class AgentsMgt(MessagePassingComputation):
 
         return global_metrics
 
-    def _emit_metrics(self, t):
+    def _emit_metrics(self, t, status='RUNNING'):
         if self._collector is not None:
-            self._collector.put((t, self.global_metrics('RUNNING', t)))
+            self._collector.put((t, self.global_metrics(status, t)))
 
     def _send_mgt_msg(self, agt, msg):
         self.post_msg('_mgt_' + agt, msg, MSG_MGT)

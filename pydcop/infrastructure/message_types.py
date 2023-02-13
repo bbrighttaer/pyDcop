@@ -188,7 +188,7 @@ ConstraintEvaluationResponse = message_type(
 )
 
 AgentMovedMessage = message_type(
-    'agent_moved', ['prev_position', 'new_position']
+    'agent_moved', ['prev_position', 'new_position', 'updated_domain', 'current_position']
 )
 
 # SimTimeStepChange is sent by the orchestrator to all agents when the simulation environment changes its times step
@@ -212,6 +212,7 @@ DcopInitializationMessage = message_type(
 ASYNC_MSG_TYPES = [
     'constraint_evaluation_request',
     'constraint_evaluation_response',
+    'agent_moved',
 ]
 
 # A GraphConnectionMessage is sent by an agent to the orchestrator when
