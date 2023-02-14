@@ -70,6 +70,9 @@ class SimulationEnvironment(MessagePassingComputation):
         """
         ...
 
+    def before_time_step_changed(self):
+        ...
+
 
 class TimeStep:
     """

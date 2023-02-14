@@ -535,6 +535,12 @@ class DynamicOrchestrator(Orchestrator):
             )
             self.mgt._msg_handlers['value_change'] = self.mgt._on_value_change_msg
 
+            # override before time step changed function of sim env
+            self.simulation_environment.before_time_step_changed = notify_wrap(
+                self.simulation_environment.before_time_step_changed,
+                self._before_time_step_changed,
+            )
+
         self.mgt.wait_stop_agents()
         self._own_agt.clean_shutdown()
         self._own_agt.join()
@@ -545,8 +551,10 @@ class DynamicOrchestrator(Orchestrator):
         self.mgt._orchestrator_stop_agents()
         self.logger.info(f'Final graph: {self._current_graph.edges.data()}')
 
-    def on_sim_env_time_step_changed(self):
+    def _before_time_step_changed(self):
         self._collect_metrics()
+
+    def on_sim_env_time_step_changed(self):
         self._async_senders.clear()
         # clear async broadcast queue
         with self._async_broadcast_msg_queue.mutex:

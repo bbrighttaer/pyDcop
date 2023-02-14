@@ -167,6 +167,7 @@ class GridWorld(SimulationEnvironment):
 
     def step(self):
         try:
+            self.before_time_step_changed()
             evt = next(self._events_iterator)
             if not evt.is_delay:
                 for a in evt.actions:
@@ -347,18 +348,19 @@ class GridWorld(SimulationEnvironment):
 
     def calculate_global_score(self) -> Tuple[int, float]:  # number of violations, score
         self.logger.debug('Calculating global score')
-
-        # apply all actions
-        self.logger.info(f'Applying actions: num of actions = {len(self._delayed_actions_list)}')
-        for sender, agent, value, on_action_cb in self._delayed_actions_list:
-            self._apply_selected_action(sender, agent, value, on_action_cb)
-        self._delayed_actions_list.clear()
-
+        self._apply_all_actions()
         score = 0.
         for agt in self.agents:
             score += self.calc_agent_score(self.agents[agt])
         self._mark_detected_targets()
         return 0, score
+
+    def _apply_all_actions(self):
+        # apply all actions
+        self.logger.info(f'Applying actions: num of actions = {len(self._delayed_actions_list)}')
+        for sender, agent, value, on_action_cb in self._delayed_actions_list:
+            self._apply_selected_action(sender, agent, value, on_action_cb)
+        self._delayed_actions_list.clear()
 
     def calc_agent_score(self, agent: MobileSensingAgent):
         score = 0.

@@ -165,9 +165,6 @@ class DIGCA(DynamicGraphConstructionComputation):
                 ),
             )
 
-        # update state
-        self.state = State.ACTIVE
-
     def _receive_announce(self, sender: str, msg: Announce):
         if self.state == State.INACTIVE and self._phi(msg.agent_id) and len(self.neighbors) < self._max_degree:
             self.logger.debug(f'Sending announce response to {msg.agent_id}')
@@ -187,11 +184,8 @@ class DIGCA(DynamicGraphConstructionComputation):
     def _receive_announce_response(self, sender: str, msg: AnnounceResponse):
         self.logger.debug(f'Received announce response from {sender}: {msg}')
         if self.state == State.INACTIVE and self._assess_potential_neighbor(msg):
-            # if self.name == 'DIGCA-a2':
-            #     if sender == 'DIGCA-a0':
-            #         self._send_add_me_msg(msg)
-            # else:
-            #     self._send_add_me_msg(msg)
+            # update state
+            self.state = State.ACTIVE
             self._send_add_me_msg(msg)
 
     def _assess_potential_neighbor(self, msg: AnnounceResponse):
