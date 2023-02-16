@@ -1,0 +1,300 @@
+name: max-deg-3-graph-1-1662569516.070929-20agts.sim
+objective: min
+domains:
+  d4:
+    values:
+    - -20
+    - 25
+    - 19
+  d2:
+    values:
+    - -34
+    - -3
+    - 27
+  d6:
+    values:
+    - 10
+    - 30
+    - 24
+  d0:
+    values:
+    - -42
+    - 27
+    - -49
+  d5:
+    values:
+    - 10
+    - -17
+    - 20
+  d1:
+    values:
+    - -21
+    - -26
+    - 41
+  d3:
+    values:
+    - 10
+    - 19
+    - 20
+  d17:
+    values:
+    - 10
+    - 0
+    - 31
+  d9:
+    values:
+    - -31
+    - -21
+    - 31
+  d10:
+    values:
+    - -31
+    - 16
+    - -1
+  d14:
+    values:
+    - 44
+    - -49
+    - 35
+  d11:
+    values:
+    - 49
+    - -42
+    - -30
+  d7:
+    values:
+    - 47
+    - 25
+    - -45
+  d13:
+    values:
+    - -12
+    - 49
+    - -47
+  d18:
+    values:
+    - -16
+    - 10
+    - 26
+  d12:
+    values:
+    - 42
+    - -1
+    - 41
+  d15:
+    values:
+    - 4
+    - 0
+    - 43
+  d19:
+    values:
+    - 23
+    - 6
+    - -33
+  d8:
+    values:
+    - -4
+    - -38
+    - -46
+  d16:
+    values:
+    - -33
+    - 13
+    - -23
+variables:
+  var4:
+    domain: d4
+  var2:
+    domain: d2
+  var6:
+    domain: d6
+  var0:
+    domain: d0
+  var5:
+    domain: d5
+  var1:
+    domain: d1
+  var3:
+    domain: d3
+  var17:
+    domain: d17
+  var9:
+    domain: d9
+  var10:
+    domain: d10
+  var14:
+    domain: d14
+  var11:
+    domain: d11
+  var7:
+    domain: d7
+  var13:
+    domain: d13
+  var18:
+    domain: d18
+  var12:
+    domain: d12
+  var15:
+    domain: d15
+  var19:
+    domain: d19
+  var8:
+    domain: d8
+  var16:
+    domain: d16
+constraints:
+  c0:
+    type: intention
+    function: 0.895 * var4**2 + -0.787 * var4 * var7 + 0.184 * var7**2
+    differentials:
+      var4: 2 * 0.895 * var4 + -0.787 * var7
+      var7: -0.787 * var4 + 2 * 0.184 * var7
+  c1:
+    type: intention
+    function: -2.82 * var2**2 + 0.684 * var2 * var3 + -2.294 * var3**2
+    differentials:
+      var2: 2 * -2.82 * var2 + 0.684 * var3
+      var3: 0.684 * var2 + 2 * -2.294 * var3
+  c2:
+    type: intention
+    function: 3.897 * var2**2 + 3.615 * var2 * var8 + 3.58 * var8**2
+    differentials:
+      var2: 2 * 3.897 * var2 + 3.615 * var8
+      var8: 3.615 * var2 + 2 * 3.58 * var8
+  c3:
+    type: intention
+    function: -3.811 * var0**2 + 1.05 * var0 * var11 + 2.616 * var11**2
+    differentials:
+      var0: 2 * -3.811 * var0 + 1.05 * var11
+      var11: 1.05 * var0 + 2 * 2.616 * var11
+  c4:
+    type: intention
+    function: -2.418 * var0**2 + -1.97 * var0 * var4 + -1.611 * var4**2
+    differentials:
+      var0: 2 * -2.418 * var0 + -1.97 * var4
+      var4: -1.97 * var0 + 2 * -1.611 * var4
+  c5:
+    type: intention
+    function: -0.701 * var0**2 + -4.506 * var0 * var1 + -0.19 * var1**2
+    differentials:
+      var0: 2 * -0.701 * var0 + -4.506 * var1
+      var1: -4.506 * var0 + 2 * -0.19 * var1
+  c6:
+    type: intention
+    function: -0.18 * var5**2 + 1.388 * var5 * var18 + -0.165 * var18**2
+    differentials:
+      var5: 2 * -0.18 * var5 + 1.388 * var18
+      var18: 1.388 * var5 + 2 * -0.165 * var18
+  c7:
+    type: intention
+    function: -1.675 * var5**2 + -1.471 * var5 * var6 + 4.173 * var6**2
+    differentials:
+      var5: 2 * -1.675 * var5 + -1.471 * var6
+      var6: -1.471 * var5 + 2 * 4.173 * var6
+  c8:
+    type: intention
+    function: -3.959 * var1**2 + 1.555 * var1 * var2 + 1.33 * var2**2
+    differentials:
+      var1: 2 * -3.959 * var1 + 1.555 * var2
+      var2: 1.555 * var1 + 2 * 1.33 * var2
+  c9:
+    type: intention
+    function: -1.559 * var1**2 + -4.334 * var1 * var12 + 3.971 * var12**2
+    differentials:
+      var1: 2 * -1.559 * var1 + -4.334 * var12
+      var12: -4.334 * var1 + 2 * 3.971 * var12
+  c10:
+    type: intention
+    function: -4.03 * var3**2 + 1.007 * var3 * var5 + 4.491 * var5**2
+    differentials:
+      var3: 2 * -4.03 * var3 + 1.007 * var5
+      var5: 1.007 * var3 + 2 * 4.491 * var5
+  c11:
+    type: intention
+    function: 0.894 * var9**2 + 4.548 * var9 * var14 + -4.787 * var14**2
+    differentials:
+      var9: 2 * 0.894 * var9 + 4.548 * var14
+      var14: 4.548 * var9 + 2 * -4.787 * var14
+  c12:
+    type: intention
+    function: 2.873 * var9**2 + -3.951 * var9 * var10 + 3.131 * var10**2
+    differentials:
+      var9: 2 * 2.873 * var9 + -3.951 * var10
+      var10: -3.951 * var9 + 2 * 3.131 * var10
+  c13:
+    type: intention
+    function: -4.677 * var10**2 + -0.433 * var10 * var16 + 2.534 * var16**2
+    differentials:
+      var10: 2 * -4.677 * var10 + -0.433 * var16
+      var16: -0.433 * var10 + 2 * 2.534 * var16
+  c14:
+    type: intention
+    function: 0.748 * var7**2 + 3.637 * var7 * var9 + -1.599 * var9**2
+    differentials:
+      var7: 2 * 0.748 * var7 + 3.637 * var9
+      var9: 3.637 * var7 + 2 * -1.599 * var9
+  c15:
+    type: intention
+    function: -3.004 * var7**2 + -0.226 * var7 * var15 + 3.325 * var15**2
+    differentials:
+      var7: 2 * -3.004 * var7 + -0.226 * var15
+      var15: -0.226 * var7 + 2 * 3.325 * var15
+  c16:
+    type: intention
+    function: 0.413 * var7**2 + 1.367 * var7 * var17 + -4.566 * var17**2
+    differentials:
+      var7: 2 * 0.413 * var7 + 1.367 * var17
+      var17: 1.367 * var7 + 2 * -4.566 * var17
+  c17:
+    type: intention
+    function: -2.084 * var18**2 + -2.366 * var18 * var19 + 1.897 * var19**2
+    differentials:
+      var18: 2 * -2.084 * var18 + -2.366 * var19
+      var19: -2.366 * var18 + 2 * 1.897 * var19
+  c18:
+    type: intention
+    function: -4.64 * var12**2 + -4.928 * var12 * var13 + -3.919 * var13**2
+    differentials:
+      var12: 2 * -4.64 * var12 + -4.928 * var13
+      var13: -4.928 * var12 + 2 * -3.919 * var13
+agents:
+  a4:
+    id: '4'
+  a7:
+    id: '7'
+  a2:
+    id: '2'
+  a3:
+    id: '3'
+  a8:
+    id: '8'
+  a0:
+    id: '0'
+  a11:
+    id: '11'
+  a1:
+    id: '1'
+  a5:
+    id: '5'
+  a18:
+    id: '18'
+  a6:
+    id: '6'
+  a12:
+    id: '12'
+  a9:
+    id: '9'
+  a14:
+    id: '14'
+  a10:
+    id: '10'
+  a16:
+    id: '16'
+  a15:
+    id: '15'
+  a17:
+    id: '17'
+  a19:
+    id: '19'
+  a13:
+    id: '13'

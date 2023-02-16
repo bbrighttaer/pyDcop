@@ -113,6 +113,22 @@ def set_parser(subparsers):
         type=str,
         help="Dynamic graph stabilization algorithm",
     )
+    parser.add_argument(
+        "--grid_size",
+        "-g",
+        default=2,
+        dest="grid_size",
+        type=int,
+        help="Size of the GridWorld",
+    )
+    parser.add_argument(
+        "--num_targets",
+        "-k",
+        default=2,
+        dest="num_targets",
+        type=int,
+        help="Number of targets in the GridWorld",
+    )
 
 
 dcop = None
@@ -195,8 +211,8 @@ def run_cmd(args, timer=None, timeout=None):
 
     # D-DCOP environment setup
     simulation_environment = GridWorld(
-        size=2,
-        num_targets=2,
+        size=args.grid_size,
+        num_targets=args.num_targets,
         scenario=scenario,
     )
     dcop.simulation_environment = simulation_environment

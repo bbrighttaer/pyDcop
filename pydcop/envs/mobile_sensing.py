@@ -118,7 +118,7 @@ class GridWorld(SimulationEnvironment):
     name = 'GridWorld'
 
     def __init__(self, size, num_targets, scenario=None):
-        super(GridWorld, self).__init__(self.name, time_step_delay=10, scenario=scenario)
+        super(GridWorld, self).__init__(self.name, time_step_delay=5, scenario=scenario)
         self._delayed_actions_list = []
         self.grid_size = size
         self.grid = {}
@@ -167,17 +167,21 @@ class GridWorld(SimulationEnvironment):
 
     def step(self):
         try:
-            self.before_time_step_changed()
             evt = next(self._events_iterator)
-            if not evt.is_delay:
-                for a in evt.actions:
-                    if a.type == 'add_agent':
-                        self.logger.info('Event action: Adding agent %s ', a)
-                        self.run_stabilization_computation(a.args['agent'])
+            while evt.is_delay:
+                self.logger.info('Skipping delay event')
+                evt = next(self._events_iterator)
 
-                    elif a.type == 'remove_agent':
-                        self.logger.info('Event action: Remove agent %s ', a)
-                        self.remove_agent(a.args['agent'])
+            self.before_time_step_changed()
+
+            for a in evt.actions:
+                if a.type == 'add_agent':
+                    self.logger.info('Event action: Adding agent %s ', a)
+                    self.run_stabilization_computation(a.args['agent'])
+
+                elif a.type == 'remove_agent':
+                    self.logger.info('Event action: Remove agent %s ', a)
+                    self.remove_agent(a.args['agent'])
 
             self.next_time_step()
             self.logger.debug(self.history)
