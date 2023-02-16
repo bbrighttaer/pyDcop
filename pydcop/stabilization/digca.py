@@ -200,7 +200,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         -------
         True if agent satisfies requirement else False
         """
-        return msg.num_children < self._max_degree
+        return msg.num_children <= self._max_degree
 
     def _receive_add_me(self, sender: str, msg: AddMe):
         if self.state == State.INACTIVE:
