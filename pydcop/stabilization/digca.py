@@ -29,6 +29,11 @@ AnnounceResponse = message_type(
     fields=['agent_id', 'address', 'num_children'],
 )
 
+AnnounceResponseIgnored = message_type(
+    'announce_response_ignored',
+    fields=['agent_id', 'address'],
+)
+
 AddMe = message_type(
     'add_me',
     fields=['agent_id', 'address', 'comps'],
@@ -84,6 +89,8 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.state = State.INACTIVE
         self.connect_interval: Seconds = 4
         self._affected = False
+        self._ignored_resps = []
+        self._responded_ann_agents = []
 
         self._max_degree = 3
 
@@ -101,6 +108,7 @@ class DIGCA(DynamicGraphConstructionComputation):
             'parent_assigned': self._receive_parent_assigned,
             'already_active': self._receive_already_active,
             'keep_alive': self._receive_keep_alive,
+            'announce_response_ignored': self._receive_announce_response_ignored,
         })
 
     def on_start(self):
@@ -165,6 +173,23 @@ class DIGCA(DynamicGraphConstructionComputation):
                 ),
             )
 
+    def _send_announce_response_ignored(self, sel_agent):
+        """
+        Inform an agent that has responded to an announce message that no further action will be taken.
+        """
+        self.logger.debug(f'Ignored response agent = {sel_agent}')
+
+        # send add-me msg
+        dest_comp = f'{NAME}-{sel_agent.agent_id}'
+        with transient_communication(self.discovery, dest_comp, sel_agent.agent_id, sel_agent.address):
+            self.post_msg(
+                target=dest_comp,
+                msg=AnnounceResponseIgnored(
+                    agent_id=self.agent.name,
+                    address=self.address,
+                ),
+            )
+
     def _receive_announce(self, sender: str, msg: Announce):
         if self.state == State.INACTIVE and self._phi(msg.agent_id) and len(self.neighbors) < self._max_degree:
             self.logger.debug(f'Sending announce response to {msg.agent_id}')
@@ -180,6 +205,7 @@ class DIGCA(DynamicGraphConstructionComputation):
                         num_children=len(self.children),
                     ),
                 )
+            self._responded_ann_agents.append(sender)
 
     def _receive_announce_response(self, sender: str, msg: AnnounceResponse):
         self.logger.debug(f'Received announce response from {sender}: {msg}')
@@ -187,6 +213,16 @@ class DIGCA(DynamicGraphConstructionComputation):
             # update state
             self.state = State.ACTIVE
             self._send_add_me_msg(msg)
+        else:
+            self._send_announce_response_ignored(msg)
+
+    def _receive_announce_response_ignored(self, sender: str, msg: AnnounceResponseIgnored):
+        self.logger.debug(f'Received announce response ignored from {sender}: {msg}')
+        self._ignored_resps.append(msg)
+
+        if len(self._ignored_resps) == len(self._responded_ann_agents):
+            self.logger.info('All announce responses ignored')
+            self.execute_computations('responses-ignored')
 
     def _assess_potential_neighbor(self, msg: AnnounceResponse):
         """
@@ -362,6 +398,8 @@ class DIGCA(DynamicGraphConstructionComputation):
         self.domain = msg.data['agent_domain']
         self.current_position = msg.data['current_position']
         self.neighbor_domains = msg.data['neighbor_domains']
+        self._ignored_resps.clear()
+        self._responded_ann_agents.clear()
 
         # initialize dcop algorithm
         self.initialize_computations()
@@ -380,7 +418,7 @@ class DIGCA(DynamicGraphConstructionComputation):
         is_affected = prior_neighbors != self.agents_in_comm_range
         self.logger.debug(f'Prior={prior_neighbors}, in-range: {self.agents_in_comm_range}')
 
-        if is_affected:
+        if is_affected and len(self.agents_in_comm_range) > 0:
             self.logger.debug(f'Neighborhood change detected')
             # broadcast connection request
             self.connect()

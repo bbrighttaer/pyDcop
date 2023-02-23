@@ -1,30 +1,20 @@
 events:
-#- id: w0
-#  delay: 1
 - id: e0
   actions:
   - type: add_agent
     agent: a0
-#- id: w1
-#  delay: 10
 - id: e1
   actions:
   - type: add_agent
     agent: a1
-#- id: w2
-#  delay: 10
 - id: e2
   actions:
   - type: add_agent
     agent: a2
-#- id: w3
-#  delay: 10
 - id: e3
   actions:
   - type: remove_agent
     agent: a0
-- id: w3
-  delay: 10
 - id: e4
   actions:
   - type: add_agent
@@ -41,3 +31,19 @@ events:
   actions:
   - type: add_agent
     agent: a6
+- id: e8
+  actions:
+  - type: add_agent
+    agent: a7
+- id: e9
+  actions:
+  - type: add_agent
+    agent: a8
+- id: e10
+  actions:
+  - type: add_agent
+    agent: a9
+- id: e11
+  actions:
+  - type: add_agent
+    agent: a10

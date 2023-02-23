@@ -1,10 +1,10 @@
  -v 3 ddcop_run
  --algo cocoa
  --collect_on value_change
- --run_metric 20agts.csv
- --distribution ../simulations/exp/20agts.sim-distribution.yaml
- --scenario ../simulations/exp/20agts.sim-scenario.yaml
- ../simulations/exp/20agts.sim.yaml
+ --run_metric 10agts.csv
+ --distribution ../simulations/exp/10agts.sim-distribution.yaml
+ --scenario ../simulations/exp/10agts.sim-scenario.yaml
+ ../simulations/exp/10agts.sim.yaml
  -b digca
- -g 20
- -k 20
+ -g 5
+ -k 10

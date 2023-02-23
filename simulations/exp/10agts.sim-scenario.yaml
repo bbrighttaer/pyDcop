@@ -1,0 +1,93 @@
+events:
+- id: w0
+  delay: 1
+- id: e0
+  actions:
+  - type: add_agent
+    agent: a7
+- id: w1
+  delay: 12
+- id: e1
+  actions:
+  - type: add_agent
+    agent: a9
+- id: w2
+  delay: 12
+- id: e2
+  actions:
+  - type: add_agent
+    agent: a4
+- id: w3
+  delay: 12
+- id: e3
+  actions:
+  - type: add_agent
+    agent: a6
+- id: w4
+  delay: 12
+- id: e4
+  actions:
+  - type: add_agent
+    agent: a1
+- id: w5
+  delay: 12
+- id: e5
+  actions:
+  - type: add_agent
+    agent: a5
+- id: w6
+  delay: 12
+- id: e6
+  actions:
+  - type: add_agent
+    agent: a2
+- id: w7
+  delay: 12
+- id: e7
+  actions:
+  - type: add_agent
+    agent: a3
+- id: w8
+  delay: 12
+- id: e8
+  actions:
+  - type: add_agent
+    agent: a0
+- id: w9
+  delay: 12
+- id: e9
+  actions:
+  - type: add_agent
+    agent: a8
+- id: w10
+  delay: 12
+- id: e10
+  actions:
+  - type: remove_agent
+    agent: a8
+- id: w11
+  delay: 12
+- id: e11
+  actions:
+  - type: remove_agent
+    agent: a3
+- id: w12
+  delay: 12
+- id: e12
+  actions:
+  - type: remove_agent
+    agent: a5
+- id: w13
+  delay: 12
+- id: e13
+  actions:
+  - type: remove_agent
+    agent: a0
+- id: w14
+  delay: 12
+- id: e14
+  actions:
+  - type: remove_agent
+    agent: a2
+- id: w15
+  delay: 12

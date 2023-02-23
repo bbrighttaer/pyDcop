@@ -118,7 +118,7 @@ class GridWorld(SimulationEnvironment):
     name = 'GridWorld'
 
     def __init__(self, size, num_targets, scenario=None):
-        super(GridWorld, self).__init__(self.name, time_step_delay=5, scenario=scenario)
+        super(GridWorld, self).__init__(self.name, time_step_delay=10, scenario=scenario)
         self._delayed_actions_list = []
         self.grid_size = size
         self.grid = {}
@@ -171,8 +171,6 @@ class GridWorld(SimulationEnvironment):
             while evt.is_delay:
                 self.logger.info('Skipping delay event')
                 evt = next(self._events_iterator)
-
-            self.before_time_step_changed()
 
             for a in evt.actions:
                 if a.type == 'add_agent':
@@ -304,19 +302,19 @@ class GridWorld(SimulationEnvironment):
             unique_cells = list(set(selected_cells.values()))
 
             if len(unique_cells) == 1:
-                self.logger.debug('unique cells')
+                # self.logger.debug('unique cells')
                 score = unique_cells[0].get_num_active_targets() * 2
 
             elif len(unique_cells) > 1:
-                self.logger.debug('multiple cells')
+                # self.logger.debug('multiple cells')
                 score = 0
                 for cell in selected_cells.values():
                     score += cell.get_num_active_targets() * 0.5
 
         elif len(selected_cells) == 1:
-            self.logger.debug('single cell')
+            # self.logger.debug('single cell')
             score = list(selected_cells.values())[0].get_num_active_targets() * 0.5
-        self.logger.debug(f'score = {score}')
+        # self.logger.debug(f'score = {score}')
         # send constraint evaluation result to computation (sender)
         self.send_constraint_evaluation_response(
             target=sender,
@@ -327,6 +325,12 @@ class GridWorld(SimulationEnvironment):
     def on_action_selection(self, on_action_cb, sender: str, msg, t: float):
         self.logger.info(f'Received action selection from {sender}: {msg}')
         self._delayed_actions_list.append((sender, msg.agent, msg.value, on_action_cb))
+
+        if len(self._delayed_actions_list) == len(self.agents):
+            self.logger.info('Collecting simulation metrics...')
+            self._record_simulation_metrics()
+        else:
+            self.logger.debug(f'delayed actions: {self._delayed_actions_list}, agents = {self.agents}')
 
     def _apply_selected_action(self, sender, agent, value, on_action_cb):
         # apply action
@@ -361,7 +365,7 @@ class GridWorld(SimulationEnvironment):
 
     def _apply_all_actions(self):
         # apply all actions
-        self.logger.info(f'Applying actions: num of actions = {len(self._delayed_actions_list)}')
+        self.logger.info(f'Applying actions: num of actions = {len(self._delayed_actions_list)}, num_agents: {len(self.agents)}')
         for sender, agent, value, on_action_cb in self._delayed_actions_list:
             self._apply_selected_action(sender, agent, value, on_action_cb)
         self._delayed_actions_list.clear()

@@ -932,18 +932,18 @@ class VariableComputation(DcopComputation):
         :param val:
         :param cost:
         """
-        if val != self._previous_val:
-            self.logger.info(
-                "Selecting new value: %s, %s (previous: %s, %s)",
-                val,
-                cost,
-                self._previous_val,
-                self.__cost__,
-            )
-            self._on_value_selection(val, cost, self.cycle_count)
-            self._previous_val = val
-            self.__value__ = val
-            event_bus.send("computations.value." + self.name, (self.name, val))
+        # if val != self._previous_val:
+        self.logger.info(
+            "Selecting new value: %s, %s (previous: %s, %s)",
+            val,
+            cost,
+            self._previous_val,
+            self.__cost__,
+        )
+        self._on_value_selection(val, cost, self.cycle_count)
+        self._previous_val = val
+        self.__value__ = val
+        event_bus.send("computations.value." + self.name, (self.name, val))
         self.__cost__ = cost
 
     def random_value_selection(self):

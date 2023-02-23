@@ -486,18 +486,15 @@ class DynamicOrchestrator(Orchestrator):
             self.logger.debug(f'Running scenarios from simulation environment: {self.simulation_environment.name}')
 
             # set simulation env step function as periodic action
-            cb = self.agent.set_periodic_action(
-                period=self.simulation_environment.time_step_delay,
-                cb=self.simulation_environment.step,
-            )
+            # cb = self.agent.set_periodic_action(
+            #     period=self.simulation_environment.time_step_delay,
+            #     cb=self.simulation_environment.step,
+            # )
 
             # dynamically override the on_simulation_ended cb of simulation environment to remove periodic action
             self.simulation_environment.on_simulation_ended = notify_wrap(
+                self.simulation_environment.on_simulation_ended,
                 self.on_simulation_ended,
-                functools.partial(
-                    self.agent.remove_periodic_action,
-                    cb,
-                ),
             )
 
             # override run_stabilization method
@@ -526,20 +523,21 @@ class DynamicOrchestrator(Orchestrator):
 
             # override method for handling value changes, so we can apply agent actions in the environment
             self.mgt._on_value_change_msg = notify_wrap(
-                # must come first before actual function for the purposes of cost calculation in _on_value_change_msg
+                self.mgt._on_value_change_msg,
                 functools.partial(
                     self.simulation_environment.on_action_selection,
                     self._on_agent_moved_cb
                 ),
-                self.mgt._on_value_change_msg,
             )
             self.mgt._msg_handlers['value_change'] = self.mgt._on_value_change_msg
 
             # override before time step changed function of sim env
-            self.simulation_environment.before_time_step_changed = notify_wrap(
-                self.simulation_environment.before_time_step_changed,
-                self._before_time_step_changed,
+            self.simulation_environment._record_simulation_metrics = notify_wrap(
+                self.simulation_environment._record_simulation_metrics,
+                self._record_simulation_metrics,
             )
+
+            self.simulation_environment.step()
 
         self.mgt.wait_stop_agents()
         self._own_agt.clean_shutdown()
@@ -551,8 +549,9 @@ class DynamicOrchestrator(Orchestrator):
         self.mgt._orchestrator_stop_agents()
         self.logger.info(f'Final graph: {self._current_graph.edges.data()}')
 
-    def _before_time_step_changed(self):
+    def _record_simulation_metrics(self):
         self._collect_metrics()
+        self.simulation_environment.step()
 
     def on_sim_env_time_step_changed(self):
         self._async_senders.clear()
