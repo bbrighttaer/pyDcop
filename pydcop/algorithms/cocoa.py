@@ -107,30 +107,32 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
 
     def start_dcop(self, neighbor_triggered=False):
         # check if this computation can start
+        # if self._dcop_started:
+        #     self.logger.debug(f'DCOP process already started. Neighbor triggered: {neighbor_triggered}')
+
+        # if parent is available, relay execution call to parent
         parent = self.get_parent()
-        if self._dcop_started:
-            self.logger.debug(f'DCOP process already started. Neighbor triggered: {neighbor_triggered}')
+        should_forward = parent and parent not in self.done_state_history + self.hold_state_history
+        no_neighbors = len(self.neighbors) == 0
 
-        elif neighbor_triggered:  # called by a neighbor
-            self.logger.debug(f'root: {not parent} or neighbor triggered: {neighbor_triggered}')
-            self._dcop_started = True
+        if no_neighbors:
+            self.logger.debug('isolated agent')
+            self.select_value()
 
-            # send inquiry messages
-            msg = CoCoAMessage(CoCoAMessage.INQUIRY_MESSAGE, self.variable.domain.values)
-            self.post_to_all_neighbors(msg, MSG_PRIORITY, on_error="fail")
-
-        elif parent:  # if parent is available, relay execution call to parent
+        elif should_forward:
             self.logger.debug('forwarding to parent')
             self.post_msg(
                 target=parent,
                 msg=CoCoAMessage(CoCoAMessage.FORWARDED_DCOP_EXECUTION, 'forwarded'),
             )
 
-        elif len(self.neighbors) == 0 and self.current_value is None:  # isolated agent
-            self.logger.debug('isolated agent')
-            self.select_value()
         else:
-            self.logger.warning('no condition matched!')
+            self.logger.debug(f'root: {not parent} or neighbor triggered: {neighbor_triggered}')
+            self._dcop_started = True
+
+            # send inquiry messages
+            msg = CoCoAMessage(CoCoAMessage.INQUIRY_MESSAGE, self.variable.domain.values)
+            self.post_to_all_neighbors(msg, MSG_PRIORITY, on_error="fail")
 
     def get_parent(self):
         for link in self.computation_def.node.links:
@@ -174,8 +176,8 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
                 target=parent,
                 msg=CoCoAMessage(CoCoAMessage.FORWARDED_DCOP_EXECUTION, 'forwarded'),
             )
-        elif self._dcop_started:
-            self.logger.debug(f'DCOP process already started. Forwarded exec from {sender}')
+        # elif self._dcop_started:
+        #     self.logger.debug(f'DCOP process already started. Forwarded exec from {sender}')
         else:
             self.logger.debug('Starting DCOP execution')
             self._dcop_started = True
@@ -284,12 +286,14 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         self.cost_msgs[variable_name] = recv_msg.content
 
         # check if all neighbors have responded to cost inquiries
-        # self.logger.debug(f'{self.neighbors}, {self.cost_msgs}, {self.computation_def.exec_mode}')
+        self.logger.debug(f'{self.neighbors}, {self.cost_msgs}, {self.computation_def.exec_mode}')
         if len(self.neighbors) == len(self.cost_msgs):
             try:
                 self.select_value()
             except KeyError as e:
                 self.logger.debug(f'Aborting, cannot find a variable: {str(e)}')
+        else:
+            self.logger.debug('Number of expected cost messages not met')
 
     @register(CoCoAMessage.UPDATE_STATE_MESSAGE)
     def _on_update_state_message(self, variable_name: str, recv_msg: CoCoAMessage, t: int):

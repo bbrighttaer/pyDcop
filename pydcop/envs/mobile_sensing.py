@@ -119,7 +119,7 @@ class GridWorld(SimulationEnvironment):
 
     def __init__(self, size, num_targets, scenario=None):
         super(GridWorld, self).__init__(self.name, time_step_delay=10, scenario=scenario)
-        self._delayed_actions_list = []
+        self._delayed_actions = {}
         self.grid_size = size
         self.grid = {}
         self._current_time_step = -1
@@ -324,13 +324,13 @@ class GridWorld(SimulationEnvironment):
 
     def on_action_selection(self, on_action_cb, sender: str, msg, t: float):
         self.logger.info(f'Received action selection from {sender}: {msg}')
-        self._delayed_actions_list.append((sender, msg.agent, msg.value, on_action_cb))
+        self._delayed_actions[sender] = (sender, msg.agent, msg.value, on_action_cb)
 
-        if len(self._delayed_actions_list) == len(self.agents):
+        if len(self._delayed_actions) == len(self.agents):
             self.logger.info('Collecting simulation metrics...')
             self._record_simulation_metrics()
         else:
-            self.logger.debug(f'delayed actions: {self._delayed_actions_list}, agents = {self.agents}')
+            self.logger.debug(f'delayed actions: {self._delayed_actions}, agents = {self.agents}')
 
     def _apply_selected_action(self, sender, agent, value, on_action_cb):
         # apply action
@@ -365,10 +365,10 @@ class GridWorld(SimulationEnvironment):
 
     def _apply_all_actions(self):
         # apply all actions
-        self.logger.info(f'Applying actions: num of actions = {len(self._delayed_actions_list)}, num_agents: {len(self.agents)}')
-        for sender, agent, value, on_action_cb in self._delayed_actions_list:
+        self.logger.info(f'Applying actions: num of actions = {len(self._delayed_actions)}, num_agents: {len(self.agents)}')
+        for sender, agent, value, on_action_cb in self._delayed_actions.values():
             self._apply_selected_action(sender, agent, value, on_action_cb)
-        self._delayed_actions_list.clear()
+        self._delayed_actions.clear()
 
     def calc_agent_score(self, agent: MobileSensingAgent):
         score = 0.

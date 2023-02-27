@@ -154,6 +154,8 @@ class DIGCA(DynamicGraphConstructionComputation):
                 prio=MSG_ALGO,
                 on_error='fail',
             )
+        else:
+            self.logger.debug(f'Not broadcasting Announce msg: state = {self.state}, parent = {self.parent}')
 
     def _send_add_me_msg(self, sel_agent):
         """
