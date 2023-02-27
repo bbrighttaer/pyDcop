@@ -1,3 +1,6 @@
+import threading
+from queue import Queue, Empty
+
 from pydcop.infrastructure.agents import DynamicAgent
 from pydcop.infrastructure.communication import MSG_ALGO, MSG_MGT
 from pydcop.infrastructure.computations import MessagePassingComputation
@@ -79,8 +82,10 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         self._max = 0
         self._parents = []
 
-        # props for handling paused msgs
-        # self._paused_ann_msgs_queue = Queue()
+        # props for async handling of value msgs
+        self._value_msgs_queue = Queue()
+
+        self._value_msgs_t = threading.Thread(target=self._val_pos_msgs_helper, daemon=True)
 
         self._msg_handlers.update({
             'announce': self._receive_announce,
@@ -94,6 +99,7 @@ class DistributedDFS(DynamicGraphConstructionComputation):
     def on_start(self):
         super(DistributedDFS, self).on_start()
         self.logger.debug(f'On start of {self.name}')
+        self._value_msgs_t.start()
 
     def connect(self):
         self.logger.debug('Connecting...')
@@ -183,11 +189,13 @@ class DistributedDFS(DynamicGraphConstructionComputation):
 
             for p in self._parents:
                 dest_comp = f'{self.NAME}-{p.agent_id}'
+                self.logger.debug(f'Sending value-msg to {dest_comp}')
                 with transient_communication(self.discovery, dest_comp, p.agent_id, p.address):
                     self.post_msg(
                         target=dest_comp,
                         msg=ValueMsg(value=self._max),
                     )
+        self.logger.debug(f'Splitting-related ops completed')
 
     def _register(self, neighbor: Neighbor, update_graph=True):
         # registration and configuration
@@ -207,12 +215,24 @@ class DistributedDFS(DynamicGraphConstructionComputation):
 
     def _on_value_msg(self, sender: str, msg: ValueMsg):
         self.logger.debug(f'Received value msg from {sender}: {msg}')
+        self._value_msgs_queue.put((sender, msg))
+
+    def _val_pos_msgs_helper(self):
+        while True:
+            try:
+                if self._children_temp or self._parents:
+                    sender, msg = self._value_msgs_queue.get()
+                    self._send_position_and_value_msgs(sender, msg)
+            except Empty:
+                pass
+
+    def _send_position_and_value_msgs(self, sender, msg):
         if sender not in self._value_msg_senders:
             self._value_msg_senders.append(sender)
 
             if self._max < msg.value:
                 self._max = msg.value
-            self.logger.debug(f'received: {self._value_msg_senders}, ctemp: {self._children_temp}')
+
             if len(self._value_msg_senders) == len(self._children_temp):
                 self._max += 1
 
@@ -233,6 +253,8 @@ class DistributedDFS(DynamicGraphConstructionComputation):
                             target=f'{self.NAME}-{agt.agent_id}',
                             msg=PositionMsg(agent_id=self.agent.name, position=self._max),
                         )
+            else:
+                self.logger.debug(f'received: {self._value_msg_senders}, ctemp: {self._children_temp}')
 
     def _clear_temp_connection_variables(self):
         """
@@ -279,7 +301,8 @@ class DistributedDFS(DynamicGraphConstructionComputation):
                     )
                 self._register(self._neighbors[p.agent_id], update_graph=False)
 
-            if len(self._children_temp) == 0:
+            is_leaf_node = len(self._children_temp) == 0
+            if is_leaf_node:
                 self.execute_computations(exec_order='child-call')
 
     def _on_pseudo_child_msg(self, sender: str, msg: PseudoChildMsg):
@@ -338,7 +361,7 @@ class DistributedDFS(DynamicGraphConstructionComputation):
         is_affected = prior_neighbors != self.agents_in_comm_range
         self.logger.debug(f'Prior={prior_neighbors}, in-range: {self.agents_in_comm_range}')
 
-        if is_affected:
+        if is_affected and len(self.agents_in_comm_range) > 0:
             self.logger.debug(f'Neighborhood change detected')
             # broadcast connection request
             self.connect()
