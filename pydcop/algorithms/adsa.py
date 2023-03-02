@@ -206,7 +206,7 @@ class ADsaComputation(VariableComputation):
             self.stop()
         else:
             self._tick_handle = self.add_periodic_action(self.period, self.tick)
-            self.random_value_selection()
+            self.select_random_value()
             if self.logger.isEnabledFor(logging.INFO):
                 self.logger.info(
                     "ADSA starts: randomly select value %s", self.current_value

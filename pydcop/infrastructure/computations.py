@@ -946,7 +946,7 @@ class VariableComputation(DcopComputation):
         event_bus.send("computations.value." + self.name, (self.name, val))
         self.__cost__ = cost
 
-    def random_value_selection(self):
+    def select_random_value(self):
         """
         Select a random value from the domain of the variable of the
         VariableComputation.

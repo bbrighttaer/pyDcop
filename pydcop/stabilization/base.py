@@ -110,7 +110,7 @@ class DynamicGraphConstructionComputation(MessagePassingComputation):
             elif neighbor in self.children:
                 neighbor_type = 'child'
                 self.children.remove(neighbor)
-            elif neighbor in self.pseudo_children:
+            else:  # neighbor in self.pseudo_children:
                 neighbor_type = 'pseudo_children'
                 self.pseudo_children.remove(neighbor)
 
@@ -323,6 +323,7 @@ def get_relation_class(algo_name):
     """
     relation_class = {
         'cocoa': AsyncNaryFunctionRelation,
+        'dcop': AsyncNaryFunctionRelation,
         'ddpop': AsyncNAryMatrixRelation,
     }.get(algo_name)
     return relation_class

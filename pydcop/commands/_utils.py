@@ -132,6 +132,8 @@ columns = {
         "msg_size",
         "status",
         "edit_distance",
+        "num_connected_components",
+        "num_nodes",
     ],
     "period": ["time", "cycle", "cost", "violation", "msg_count", "msg_size", "status"],
 }

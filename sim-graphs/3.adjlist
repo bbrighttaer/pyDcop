@@ -1,0 +1,6 @@
+#/Users/brighteragyemang/PycharmProjects/pyDcop/pydcop/dcop_cli.py -v 3 ddcop_run --algo dcop --collect_on value_change --run_metric metrics_value_ddcop_test-digca.csv --distribution oneagent --scenario ../simulations/ddcop.sim-scenario.yaml ../simulations/ddcop.sim.yaml -b digca -g 2 -k 2
+# GMT Thu Mar  2 00:50:02 2023
+# 
+a0 a2
+a1
+a2

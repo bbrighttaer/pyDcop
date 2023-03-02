@@ -29,6 +29,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 import copy
 import functools
+import os.path
 import threading
 import time
 from collections import defaultdict
@@ -42,6 +43,7 @@ import networkx as nx
 
 import yaml
 
+from definitions import ROOT_DIR
 from pydcop.algorithms import AlgorithmDef, ComputationDef
 from pydcop.commands.distribute import load_algo_module
 from pydcop.computations_graph.objects import ComputationGraph
@@ -437,10 +439,10 @@ class DynamicOrchestrator(Orchestrator):
         self._sim_end_t = threading.Thread(target=self._end_dynamic_simulation, name='sim_end_monitor', daemon=True)
 
         self._copied_graph = None
-        if self.mgt._algo_module.GRAPH_TYPE == 'pseudotree':
-            self._current_graph = nx.DiGraph()
-        else:
-            self._current_graph = nx.Graph()
+        # if self.mgt._algo_module.GRAPH_TYPE == 'pseudotree':
+        #     self._current_graph = nx.DiGraph()
+        # else:
+        self._current_graph = nx.Graph()
 
         # props for managing async broadcast
         self._async_senders = []
@@ -547,7 +549,8 @@ class DynamicOrchestrator(Orchestrator):
         self.scenario_complete_event.wait()
         self.logger.info('All Dynamic DCOP computation have finished : stop')
         self.mgt._orchestrator_stop_agents()
-        self.logger.info(f'Final graph: {self._current_graph.edges.data()}')
+        self.logger.info(f'Final graph: edges = {self._current_graph.edges.data()}, '
+                         f'nodes = {self._current_graph.nodes.data()}')
 
     def _record_simulation_metrics(self):
         self._collect_metrics()
@@ -1703,6 +1706,8 @@ class DynamicAgentsMgt(AgentsMgt):
                 self._orchestrator._current_graph.remove_edge(msg.node1, msg.node2)
             elif msg.action == 'remove_node':
                 self._orchestrator._current_graph.remove_node(msg.node1)
+            elif msg.action == 'add-node':
+                self._orchestrator._current_graph.add_node(msg.node1)
             else:
                 self.logger.info(f'Unknown graph operation')
         except nx.NetworkXError as e:
@@ -1718,5 +1723,11 @@ class DynamicAgentsMgt(AgentsMgt):
         if previous_graph and current_graph:
             edit_distance = nx.graph_edit_distance(previous_graph, current_graph)
         metrics['edit_distance'] = edit_distance
+        metrics['num_connected_components'] = nx.number_connected_components(current_graph)
+        metrics['num_nodes'] = nx.number_of_nodes(current_graph)
+
+        self.logger.info(f'Current graph: edges = {current_graph.edges.data()}, nodes = {current_graph.nodes.data()}')
+
+        nx.write_adjlist(current_graph, os.path.join(ROOT_DIR, f'sim-graphs/{self._current_cycle}.adjlist'))
 
         return metrics

@@ -289,7 +289,7 @@ class DsaComputation(VariableComputation):
             self.finished()
             self.stop()
         else:
-            self.random_value_selection()
+            self.select_random_value()
             self.logger.debug(
                 "DSA starts: randomly select value %s", self.current_value
             )

@@ -53,7 +53,7 @@ class DsaTutoComputation(VariableComputation):
         self.next_cycle = {}
 
     def on_start(self):
-        self.random_value_selection()
+        self.select_random_value()
         self.logger.debug(
             "Random value selected at startup : %s ", self.current_value)
         self.post_to_all_neighbors(DsaMessage(self.current_value))

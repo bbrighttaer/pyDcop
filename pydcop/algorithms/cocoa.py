@@ -115,6 +115,8 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         should_forward = parent and parent not in self.done_state_history + self.hold_state_history
         no_neighbors = len(self.neighbors) == 0
 
+        self.logger.debug(f'root: {not parent} or neighbor triggered: {neighbor_triggered}')
+
         if no_neighbors:
             self.logger.debug('isolated agent')
             self.select_value()
@@ -126,8 +128,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
                 msg=CoCoAMessage(CoCoAMessage.FORWARDED_DCOP_EXECUTION, 'forwarded'),
             )
 
-        else:
-            self.logger.debug(f'root: {not parent} or neighbor triggered: {neighbor_triggered}')
+        elif not self.current_value:
             self._dcop_started = True
 
             # send inquiry messages
@@ -290,8 +291,8 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         if len(self.neighbors) == len(self.cost_msgs):
             try:
                 self.select_value()
-            except KeyError as e:
-                self.logger.debug(f'Aborting, cannot find a variable: {str(e)}')
+            except Exception as e:
+                self.logger.error(f'Aborting: {str(e)}')
         else:
             self.logger.debug('Number of expected cost messages not met')
 
@@ -309,7 +310,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         t: int
             message timestamp
         """
-        self.logger.debug(f"Received state update from {variable_name}: {recv_msg}")
+        self.logger.debug(f"Received state update from {variable_name}: {recv_msg}, self.status = {self.status}")
 
         if recv_msg.content == HOLD:
             self.hold_state_history.append(variable_name)
@@ -372,6 +373,7 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
             max_val = delta.max()
             opt_indices = np.asarray(delta == max_val).nonzero()[0]
             d_vals = np.array(self.variable.domain.values)
+            opt_indices = opt_indices[:len(d_vals)]
             rho = d_vals[opt_indices].tolist()
 
         # determine if a HOLD state is needed
@@ -398,17 +400,23 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         else:
             self.new_cycle()
 
-            # construct best values of all neighbors
             val = random.choice(rho)
             min_index = opt_indices[0]
             var_values = {self.name: val}
-            for agent in self.neighbors:
-                var_values[agent] = self.cost_msgs[agent]["cost_domain_vals"][min_index]
 
-            # compute cost
-            cost, value = self._calculate_cost(var_values)
-            self.value_selection(value, cost)
-            self.logger.debug(f"Value selected at {self.name} : value = {value}, cost = {cost}")
+            # construct best values of all neighbors
+            try:
+                for agent in self.neighbors:
+                    var_values[agent] = self.cost_msgs[agent]["cost_domain_vals"][min_index]
+
+                # compute cost
+                cost, _ = self._calculate_cost(var_values)
+            except Exception as e:
+                self.logger.error(f'Error calculating cost: {str(e)}')
+                cost = 0.
+
+            self.value_selection(val, cost)
+            self.logger.debug(f"Value selected at {self.name} : value = {val}, cost = {cost}")
 
             # update neighbors
             self.status = DONE
@@ -443,8 +451,8 @@ class CoCoA(VariableComputation, DynamicDcopComputationMixin):
         """
         Randomly select a neighbor to trigger execution
         """
-        self.logger.debug("Selecting neighbor to start")
         available_neighbors = set(self.neighbors) - set(self.done_state_history)
+        self.logger.debug(f'Selecting neighbor to start, available neighbors: {available_neighbors}')
         for neighbor in available_neighbors:
             self.logger.debug(f"Sending start-DCOP msg to neighbor {neighbor}")
             self.post_msg(neighbor, CoCoAMessage(CoCoAMessage.START_DCOP_MESSAGE, None), on_error="fail")

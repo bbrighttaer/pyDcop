@@ -6,7 +6,9 @@ from typing import Tuple
 import numpy as np
 
 from pydcop.envs import SimulationEnvironment
-from pydcop.infrastructure.message_types import ConstraintEvaluationRequest
+from pydcop.infrastructure.communication import MSG_MGT
+from pydcop.infrastructure.message_types import ConstraintEvaluationRequest, GraphConnectionMessage
+from pydcop.infrastructure.orchestrator import ORCHESTRATOR_MGT
 
 
 class GridCell:
@@ -177,9 +179,29 @@ class GridWorld(SimulationEnvironment):
                     self.logger.info('Event action: Adding agent %s ', a)
                     self.run_stabilization_computation(a.args['agent'])
 
+                    self.post_msg(
+                        ORCHESTRATOR_MGT,
+                        GraphConnectionMessage(
+                            action='add-node',
+                            node1=a.args['agent'],
+                            node2=None,
+                        ),
+                        MSG_MGT,
+                    )
+
                 elif a.type == 'remove_agent':
                     self.logger.info('Event action: Remove agent %s ', a)
                     self.remove_agent(a.args['agent'])
+
+                    self.post_msg(
+                        ORCHESTRATOR_MGT,
+                        GraphConnectionMessage(
+                            action='remove_node',
+                            node1=a.args['agent'],
+                            node2=None,
+                        ),
+                        MSG_MGT,
+                    )
 
             self.next_time_step()
             self.logger.debug(self.history)
@@ -290,13 +312,16 @@ class GridWorld(SimulationEnvironment):
         score = 0.
 
         for k, val in msg.var_assignments.items():
-            if k.startswith('var'):
-                k = k.replace('var', 'a')
-                current_cell = self.agents[k].current_cell
-                action = getattr(current_cell, val)
-                cell = self.grid.get(action(), None)
-                if cell:
-                    selected_cells[k] = cell
+            try:
+                if k.startswith('var'):
+                    k = k.replace('var', 'a')
+                    current_cell = self.agents[k].current_cell
+                    action = getattr(current_cell, val)
+                    cell = self.grid.get(action(), None)
+                    if cell:
+                        selected_cells[k] = cell
+            except KeyError as e:
+                self.logger.error(f'_on_constraint_evaluation_msg: {str(e)} - sender={sender}, msg = {msg}')
 
         if len(selected_cells) > 1:
             unique_cells = list(set(selected_cells.values()))
